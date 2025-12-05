@@ -1,0 +1,159 @@
+package org.rostats.command;
+
+import org.bukkit.Bukkit;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
+import org.bukkit.util.StringUtil;
+import org.jetbrains.annotations.NotNull;
+import org.rostats.ROStatsPlugin;
+import org.rostats.data.Job;
+import org.rostats.data.PlayerData;
+import org.rostats.data.Skill;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public class AdminCommand implements CommandExecutor, TabCompleter {
+
+    private final ROStatsPlugin plugin;
+
+    public AdminCommand(ROStatsPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (!sender.hasPermission("rostats.admin")) {
+            sender.sendMessage("§cNo Permission.");
+            return true;
+        }
+
+        if (args.length < 1) {
+            sendHelp(sender);
+            return true;
+        }
+
+        String sub = args[0].toLowerCase();
+
+        // Save All
+        if (sub.equals("save")) {
+            for (Player p : Bukkit.getOnlinePlayers()) plugin.getDataManager().savePlayerData(p);
+            sender.sendMessage("§aSaved data.");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sendHelp(sender);
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage("§cTarget offline.");
+            return true;
+        }
+
+        PlayerData data = plugin.getStatManager().getData(target.getUniqueId());
+
+        switch (sub) {
+            case "check":
+                sender.sendMessage("§6--- " + target.getName() + " ---");
+                sender.sendMessage("§eJob: " + data.getJob().getDisplayName());
+                sender.sendMessage("§eSkill: " + data.getActiveSkill().getDisplayName());
+                sender.sendMessage("§eLv: " + data.getBaseLevel() + " | JobLv: " + data.getJobLevel());
+                break;
+
+            case "setjob": // /roadmin setjob <player> <JobName>
+                if (args.length < 3) return true;
+                try {
+                    Job job = Job.valueOf(args[2].toUpperCase());
+                    data.setJob(job);
+                    sender.sendMessage("§aSet job to " + job.name());
+                    update(target);
+                } catch (Exception e) { sender.sendMessage("§cInvalid Job!"); }
+                break;
+
+            case "setskill": // /roadmin setskill <player> <SkillName>
+                if (args.length < 3) return true;
+                try {
+                    Skill skill = Skill.valueOf(args[2].toUpperCase());
+                    data.setActiveSkill(skill);
+                    sender.sendMessage("§aSet skill to " + skill.name());
+                } catch (Exception e) { sender.sendMessage("§cInvalid Skill!"); }
+                break;
+
+            case "levelup": // /roadmin levelup <player> <exp>
+                if (args.length < 3) return true;
+                data.addBaseExp(Long.parseLong(args[2]));
+                sender.sendMessage("§aAdded EXP.");
+                update(target);
+                break;
+
+            case "set": // /roadmin set <player> <stat> <val>
+                if (args.length < 4) return true;
+                String key = args[2].toLowerCase();
+                int val = Integer.parseInt(args[3]);
+
+                if (key.equals("points")) data.setStatPoints(val);
+                else if (key.equals("joblevel")) data.setJobLevel(val);
+                else if (key.equals("baselevel")) data.setBaseLevel(val);
+                else plugin.getStatManager().setStat(target.getUniqueId(), key.toUpperCase(), val);
+
+                sender.sendMessage("§aValue set.");
+                update(target);
+                break;
+
+            case "resetcount": // /roadmin resetcount <player> <val>
+                if (args.length < 3) return true;
+                data.setResetCount(Integer.parseInt(args[2]));
+                sender.sendMessage("§aReset count updated.");
+                break;
+
+            case "fullheal":
+                target.setHealth(target.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue());
+                data.setCurrentSP(data.getMaxSP());
+                update(target);
+                sender.sendMessage("§aHealed.");
+                break;
+        }
+        return true;
+    }
+
+    private void update(Player p) {
+        plugin.getAttributeHandler().updatePlayerStats(p);
+        plugin.getManaManager().updateBar(p);
+    }
+
+    private void sendHelp(CommandSender s) {
+        s.sendMessage("§c/roadmin setjob <player> <JOB>");
+        s.sendMessage("§c/roadmin setskill <player> <SKILL>");
+        s.sendMessage("§c/roadmin levelup <player> <EXP>");
+        s.sendMessage("§c/roadmin set <player> <STAT> <VAL>");
+        s.sendMessage("§c/roadmin fullheal <player>");
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        if (args.length == 1) {
+            StringUtil.copyPartialMatches(args[0], Arrays.asList("setjob", "setskill", "levelup", "set", "check", "fullheal", "resetcount"), completions);
+        }
+        else if (args.length == 3) {
+            if (args[0].equalsIgnoreCase("setjob")) {
+                for (Job j : Job.values()) completions.add(j.name());
+            } else if (args[0].equalsIgnoreCase("setskill")) {
+                for (Skill s : Skill.values()) completions.add(s.name());
+            } else if (args[0].equalsIgnoreCase("set")) {
+                completions.addAll(Arrays.asList("STR", "AGI", "VIT", "INT", "DEX", "LUK", "Points", "JobLevel"));
+            }
+        }
+
+        return completions;
+    }
+}

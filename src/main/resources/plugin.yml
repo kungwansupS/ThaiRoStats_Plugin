@@ -1,0 +1,19 @@
+name: ROStats
+version: '${project.version}'
+main: org.rostats.ROStatsPlugin
+api-version: '1.21'
+depend: [PlaceholderAPI]
+softdepend: [MythicMobs]
+commands:
+  status:
+    description: Open player status menu
+    usage: /status
+    aliases: [st, char, rotest]
+  roadmin:
+    description: Admin commands for ROStats
+    usage: /roadmin <args>
+    permission: rostats.admin
+permissions:
+  rostats.admin:
+    description: Admin permission
+    default: op
