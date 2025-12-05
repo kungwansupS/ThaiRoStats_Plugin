@@ -36,10 +36,11 @@ public class AttributeHandler implements Listener {
         double baseHealth = 20.0 + (baseLevel * 2.0);
         double vitMultiplier = 1.0 + (vit / 100.0);
 
-        // Job Multiplier
-        double jobMultiplier = 1.0 + data.getJob().getHpMultiplier();
+        // ลบ: Job Multiplier
+        // ลบ: double jobMultiplier = 1.0 + data.getJob().getHpMultiplier();
 
-        double finalMaxHealth = baseHealth * vitMultiplier * jobMultiplier;
+        // ปรับ: double finalMaxHealth = baseHealth * vitMultiplier * jobMultiplier;
+        double finalMaxHealth = baseHealth * vitMultiplier;
 
         if (finalMaxHealth > 2048.0) finalMaxHealth = 2048.0;
         setAttribute(player, Attribute.GENERIC_MAX_HEALTH, finalMaxHealth);

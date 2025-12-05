@@ -6,7 +6,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.rostats.ROStatsPlugin;
-import org.rostats.gui.MainMenu;
+import org.rostats.gui.CharacterGUI; // NEW Import (Renamed from StatusMenu)
 
 public class PlayerCommand implements CommandExecutor {
 
@@ -23,8 +23,8 @@ public class PlayerCommand implements CommandExecutor {
             return true;
         }
 
-        // เปิด Main Menu ทันที ไม่ว่าจะมี args หรือไม่
-        new MainMenu(plugin).open(player);
+        // เปิด Character GUI (Status Menu) ทันที (NEW)
+        new CharacterGUI(plugin).open(player, CharacterGUI.Tab.BASIC_INFO);
         return true;
     }
 }

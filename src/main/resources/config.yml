@@ -1,0 +1,37 @@
+# Configuration for ROStats Core System
+# ไฟล์นี้ใช้สำหรับตั้งค่าคงที่ที่สำคัญเพื่อให้ง่ายต่อการปรับสมดุล (Balancing)
+
+# --- Stat Cost Formula ---
+# Formula คือ: ((Current Value - 1) / Stat_Cost_Divisor) + Stat_Cost_Base
+stat-cost:
+  base: 2
+  divisor: 10
+  cost-start-level: 2 # ค่า Stat จะเริ่มคิด Cost เมื่อมีค่าถึงระดับนี้ (เช่น เมื่อค่า Stat >= 2)
+
+# --- Experience & Points ---
+exp-formula:
+  base-exp-multiplier: 10 # EXP ที่ต้องการ = (Level^3) * Multiplier
+stat-points-gain:
+  level-50-threshold: 50
+  points-low-level: 5 # Stat Points ที่ได้รับต่อเลเวล (เมื่อ Base Level <= 50)
+  points-high-level: 8 # Stat Points ที่ได้รับต่อเลเวล (เมื่อ Base Level > 50)
+
+# --- Reset System ---
+reset-system:
+  free-resets: 3
+  reset-item: "NETHER_STAR" # ไอเท็มที่ต้องใช้ในการรีเซ็ตหลังจากใช้สิทธิ์ฟรีหมดแล้ว
+
+# --- Mana/SP System ---
+sp-regen:
+  tick-interval: 40 # Task Regen ทำงานทุก X ticks (20 ticks = 1 วินาที)
+  regen-int-divisor: 6.0
+  regen-maxsp-divisor: 100.0
+
+# --- Bar Display (สำหรับแสดงผลใน Lore) ---
+bar-length: 10
+bar-colors:
+  HP: "§c|§4" # สีที่ 1: เต็ม, สีที่ 2: ว่าง
+  SP: "§b|§1"
+  BASE_LV: "§e|§6"
+  JOB_LV: "§2|§8" # Placeholder color
+  STAMINA: "§a|§2" # Placeholder color

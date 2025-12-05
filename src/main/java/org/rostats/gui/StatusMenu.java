@@ -28,7 +28,7 @@ public class StatusMenu {
 
         ItemStack info = createItem(Material.PLAYER_HEAD, "§e§l" + player.getName(),
                 "§7Base Lv: §a" + data.getBaseLevel(),
-                "§7Job Lv: §a" + data.getJobLevel(),
+                // ลบ: "§7Job Lv: §a" + data.getJobLevel(),
                 "§7Points Left: §6" + data.getStatPoints(),
                 "§bSP: " + String.format("%.0f", data.getCurrentSP()) + "/" + String.format("%.0f", data.getMaxSP()));
         inv.setItem(4, info);

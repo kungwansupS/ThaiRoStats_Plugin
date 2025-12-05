@@ -33,25 +33,19 @@ public class MainMenu {
                 "§eClick to open!");
         inv.setItem(11, statsBtn);
 
-        ItemStack jobBtn = createItem(Material.GOLDEN_HELMET, "§6§lClass Info",
-                "§7Current: §f" + data.getJob().getDisplayName(),
-                "§7Job Level: §a" + data.getJobLevel(),
-                " ",
-                "§eClick to change class!");
-        inv.setItem(13, jobBtn);
+        // ลบ: ItemStack jobBtn
+        // ลบ: inv.setItem(13, jobBtn);
 
-        ItemStack skillBtn = createItem(Material.ENCHANTED_BOOK, "§d§lActive Skills",
-                "§7Current: §f" + data.getActiveSkill().getDisplayName(),
-                " ",
-                "§eClick to manage skills!");
-        inv.setItem(15, skillBtn);
+        // ลบ: ItemStack skillBtn
+        // ลบ: inv.setItem(15, skillBtn);
 
+        // ย้ายปุ่ม Reset ไปตำแหน่งที่เหมาะสมกว่า
         ItemStack resetBtn = createItem(Material.REDSTONE, "§c§lReset All",
                 "§7Reset Stats & Points.",
                 "§7Used: §f" + data.getResetCount() + " times",
                 " ",
                 "§cClick to reset!");
-        inv.setItem(22, resetBtn);
+        inv.setItem(15, resetBtn); // ย้ายไปตำแหน่งเดิมของ Skill Btn
 
         // [CLOSE BUTTON] มุมขวาล่าง
         ItemStack closeBtn = createItem(Material.BARRIER, "§c§lClose Menu", "§7Click to close.");

@@ -9,9 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.rostats.ROStatsPlugin;
-import org.rostats.data.Job;
 import org.rostats.data.PlayerData;
-import org.rostats.data.Skill;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,55 +61,52 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "check":
                 sender.sendMessage("§6--- " + target.getName() + " ---");
-                sender.sendMessage("§eJob: " + data.getJob().getDisplayName());
-                sender.sendMessage("§eSkill: " + data.getActiveSkill().getDisplayName());
-                sender.sendMessage("§eLv: " + data.getBaseLevel() + " | JobLv: " + data.getJobLevel());
+                // ลบ: sender.sendMessage("§eJob: " + data.getJob().getDisplayName());
+                // ลบ: sender.sendMessage("§eSkill: " + data.getActiveSkill().getDisplayName());
+                // ลบ: | JobLv: " + data.getJobLevel()
+                sender.sendMessage("§eLv: " + data.getBaseLevel());
                 break;
 
-            case "setjob": // /roadmin setjob <player> <JobName>
-                if (args.length < 3) return true;
-                try {
-                    Job job = Job.valueOf(args[2].toUpperCase());
-                    data.setJob(job);
-                    sender.sendMessage("§aSet job to " + job.name());
-                    update(target);
-                } catch (Exception e) { sender.sendMessage("§cInvalid Job!"); }
-                break;
-
-            case "setskill": // /roadmin setskill <player> <SkillName>
-                if (args.length < 3) return true;
-                try {
-                    Skill skill = Skill.valueOf(args[2].toUpperCase());
-                    data.setActiveSkill(skill);
-                    sender.sendMessage("§aSet skill to " + skill.name());
-                } catch (Exception e) { sender.sendMessage("§cInvalid Skill!"); }
-                break;
+            // ลบ: case "setjob"
+            // ลบ: case "setskill"
 
             case "levelup": // /roadmin levelup <player> <exp>
                 if (args.length < 3) return true;
-                data.addBaseExp(Long.parseLong(args[2]));
-                sender.sendMessage("§aAdded EXP.");
-                update(target);
+                try {
+                    data.addBaseExp(Long.parseLong(args[2]));
+                    sender.sendMessage("§aAdded EXP.");
+                    update(target);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cInvalid EXP value!");
+                }
                 break;
 
             case "set": // /roadmin set <player> <stat> <val>
                 if (args.length < 4) return true;
                 String key = args[2].toLowerCase();
-                int val = Integer.parseInt(args[3]);
+                try {
+                    int val = Integer.parseInt(args[3]);
 
-                if (key.equals("points")) data.setStatPoints(val);
-                else if (key.equals("joblevel")) data.setJobLevel(val);
-                else if (key.equals("baselevel")) data.setBaseLevel(val);
-                else plugin.getStatManager().setStat(target.getUniqueId(), key.toUpperCase(), val);
+                    if (key.equals("points")) data.setStatPoints(val);
+                        // ลบ: else if (key.equals("joblevel")) data.setJobLevel(val);
+                    else if (key.equals("baselevel")) data.setBaseLevel(val);
+                    else plugin.getStatManager().setStat(target.getUniqueId(), key.toUpperCase(), val);
 
-                sender.sendMessage("§aValue set.");
-                update(target);
+                    sender.sendMessage("§aValue set.");
+                    update(target);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cInvalid value!");
+                }
                 break;
 
             case "resetcount": // /roadmin resetcount <player> <val>
                 if (args.length < 3) return true;
-                data.setResetCount(Integer.parseInt(args[2]));
-                sender.sendMessage("§aReset count updated.");
+                try {
+                    data.setResetCount(Integer.parseInt(args[2]));
+                    sender.sendMessage("§aReset count updated.");
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§cInvalid value!");
+                }
                 break;
 
             case "fullheal":
@@ -130,8 +125,8 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(CommandSender s) {
-        s.sendMessage("§c/roadmin setjob <player> <JOB>");
-        s.sendMessage("§c/roadmin setskill <player> <SKILL>");
+        // ลบ: s.sendMessage("§c/roadmin setjob <player> <JOB>");
+        // ลบ: s.sendMessage("§c/roadmin setskill <player> <SKILL>");
         s.sendMessage("§c/roadmin levelup <player> <EXP>");
         s.sendMessage("§c/roadmin set <player> <STAT> <VAL>");
         s.sendMessage("§c/roadmin fullheal <player>");
@@ -142,15 +137,11 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            StringUtil.copyPartialMatches(args[0], Arrays.asList("setjob", "setskill", "levelup", "set", "check", "fullheal", "resetcount"), completions);
+            StringUtil.copyPartialMatches(args[0], Arrays.asList("levelup", "set", "check", "fullheal", "resetcount", "save"), completions);
         }
         else if (args.length == 3) {
-            if (args[0].equalsIgnoreCase("setjob")) {
-                for (Job j : Job.values()) completions.add(j.name());
-            } else if (args[0].equalsIgnoreCase("setskill")) {
-                for (Skill s : Skill.values()) completions.add(s.name());
-            } else if (args[0].equalsIgnoreCase("set")) {
-                completions.addAll(Arrays.asList("STR", "AGI", "VIT", "INT", "DEX", "LUK", "Points", "JobLevel"));
+            if (args[0].equalsIgnoreCase("set")) {
+                completions.addAll(Arrays.asList("STR", "AGI", "VIT", "INT", "DEX", "LUK", "Points", "BaseLevel"));
             }
         }
 

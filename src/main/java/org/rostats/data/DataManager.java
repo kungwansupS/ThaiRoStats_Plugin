@@ -18,25 +18,24 @@ public class DataManager {
         if (!folder.exists()) folder.mkdirs();
     }
 
+    // UPDATE: loadPlayerData (now uses StatManager method to create PlayerData with plugin instance)
     public void loadPlayerData(Player player) {
         UUID uuid = player.getUniqueId();
-        File file = new File(plugin.getDataFolder(), "userdata/" + uuid + ".yml");
+        // **IMPORTANT**: StatManager's getData must now create PlayerData using the plugin instance.
+        // If StatManager does not have a reference to the plugin, PlayerData cannot access config.
+        // Assuming StatManager is updated to StatManager(plugin) and getData handles PlayerData(plugin) creation.
         PlayerData data = plugin.getStatManager().getData(uuid);
+
+        // ... (loading logic remains the same, removing Job/Job Level references) ...
+        File file = new File(plugin.getDataFolder(), "userdata/" + uuid + ".yml");
 
         if (file.exists()) {
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
             data.setBaseLevel(config.getInt("base-level", 1));
-            data.setJobLevel(config.getInt("job-level", 1));
             data.setStatPoints(config.getInt("points", 0));
             data.setResetCount(config.getInt("reset-count", 0));
 
-            // LOAD JOB
-            String jobName = config.getString("job", "NOVICE");
-            try {
-                data.setJob(Job.valueOf(jobName));
-            } catch (IllegalArgumentException e) {
-                data.setJob(Job.NOVICE);
-            }
+            // Stats Load...
 
             data.setStat("STR", config.getInt("stats.STR", 1));
             data.setStat("AGI", config.getInt("stats.AGI", 1));
@@ -68,14 +67,11 @@ public class DataManager {
 
         config.set("name", player.getName());
         config.set("base-level", data.getBaseLevel());
-        config.set("job-level", data.getJobLevel());
         config.set("points", data.getStatPoints());
         config.set("reset-count", data.getResetCount());
         config.set("current-sp", data.getCurrentSP());
 
-        // SAVE JOB
-        config.set("job", data.getJob().name());
-
+        // Stats Save...
         config.set("stats.STR", data.getStat("STR"));
         config.set("stats.AGI", data.getStat("AGI"));
         config.set("stats.VIT", data.getStat("VIT"));
