@@ -1,9 +1,7 @@
 name: ROStats-Core
-version: '0.0.1-SNAPSHOT'
+version: '0.0.9-SNAPSHOT'
 main: org.rostats.ROStatsPlugin
 api-version: '1.21'
-# ลบ: depend: [PlaceholderAPI]
-# ลบ: softdepend: [MythicMobs]
 commands:
   status:
     description: Open player status menu

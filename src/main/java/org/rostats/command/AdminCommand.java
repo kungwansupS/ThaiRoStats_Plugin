@@ -61,19 +61,14 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "check":
                 sender.sendMessage("§6--- " + target.getName() + " ---");
-                // ลบ: sender.sendMessage("§eJob: " + data.getJob().getDisplayName());
-                // ลบ: sender.sendMessage("§eSkill: " + data.getActiveSkill().getDisplayName());
-                // ลบ: | JobLv: " + data.getJobLevel()
                 sender.sendMessage("§eLv: " + data.getBaseLevel());
                 break;
-
-            // ลบ: case "setjob"
-            // ลบ: case "setskill"
 
             case "levelup": // /roadmin levelup <player> <exp>
                 if (args.length < 3) return true;
                 try {
-                    data.addBaseExp(Long.parseLong(args[2]));
+                    // UPDATE: Changed addBaseExp signature
+                    data.addBaseExp(Long.parseLong(args[2]), target.getUniqueId());
                     sender.sendMessage("§aAdded EXP.");
                     update(target);
                 } catch (NumberFormatException e) {
@@ -88,7 +83,6 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
                     int val = Integer.parseInt(args[3]);
 
                     if (key.equals("points")) data.setStatPoints(val);
-                        // ลบ: else if (key.equals("joblevel")) data.setJobLevel(val);
                     else if (key.equals("baselevel")) data.setBaseLevel(val);
                     else plugin.getStatManager().setStat(target.getUniqueId(), key.toUpperCase(), val);
 
@@ -125,8 +119,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(CommandSender s) {
-        // ลบ: s.sendMessage("§c/roadmin setjob <player> <JOB>");
-        // ลบ: s.sendMessage("§c/roadmin setskill <player> <SKILL>");
+        s.sendMessage("§c/roadmin save");
         s.sendMessage("§c/roadmin levelup <player> <EXP>");
         s.sendMessage("§c/roadmin set <player> <STAT> <VAL>");
         s.sendMessage("§c/roadmin fullheal <player>");

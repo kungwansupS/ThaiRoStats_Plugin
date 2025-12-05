@@ -30,8 +30,9 @@ sp-regen:
 # --- Bar Display (สำหรับแสดงผลใน Lore) ---
 bar-length: 10
 bar-colors:
-  HP: "§c|§4" # สีที่ 1: เต็ม, สีที่ 2: ว่าง
-  SP: "§b|§1"
-  BASE_LV: "§e|§6"
-  JOB_LV: "§2|§8" # Placeholder color
-  STAMINA: "§a|§2" # Placeholder color
+  HP: "§a|§4"    # Green fill | Red empty (Dark Red)
+  SP: "§b|§1"    # Light Blue | Dark Blue
+  BASE_LV: "§9|§3" # Blue fill | Light Blue empty
+  JOB_LV: "§e|§6" # Yellow fill | Orange empty
+  STAMINA: "§c|§4" # Red fill | Dark Red empty
+  POWER: "§9|§3" # Blue fill | Light Blue empty (ใช้สีเดียวกับ BASE_LV)

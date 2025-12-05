@@ -22,7 +22,7 @@ public class GUIListener implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        String title = event.getView().title().toString();
+        String title = PlainTextComponentSerializer.plainText().serialize(event.getView().title());
 
         if (!title.contains("Character Status (ROO)")) return;
         event.setCancelled(true);
@@ -30,64 +30,70 @@ public class GUIListener implements Listener {
         if (event.getCurrentItem() == null || event.getCurrentItem().getType() == Material.GRAY_STAINED_GLASS_PANE) return;
 
         String name = PlainTextComponentSerializer.plainText().serialize(event.getCurrentItem().displayName());
+        int slot = event.getSlot();
 
-        // 1. Handle Tab Clicks (Slots 0, 1, 2)
-        if (event.getSlot() == 0) new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
-        else if (event.getSlot() == 1) new CharacterGUI(plugin).open(player, Tab.MORE_INFO);
-        else if (event.getSlot() == 2) new CharacterGUI(plugin).open(player, Tab.RESET_CONFIRM);
+        // 1. Handle Tab Clicks (Slots 9, 10, 11)
+        if (slot == 9) new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
+        else if (slot == 10) new CharacterGUI(plugin).open(player, Tab.MORE_INFO);
+        else if (slot == 11) new CharacterGUI(plugin).open(player, Tab.RESET_CONFIRM);
 
             // 2. Handle Close Button (Slot 53)
-        else if (event.getSlot() == 53) {
+        else if (slot == 8 || slot == 53) { // Close button in R0:8 and R5:53
             player.closeInventory();
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1f, 1f);
         }
 
-        // 3. Handle Stat Allocation (Slots 19-44) - (Left/Right click logic retained from StatusMenu)
-        else if (event.getSlot() >= 19 && event.getSlot() <= 44 && name.contains("STR") || name.contains("AGI") || name.contains("VIT") || name.contains("INT") || name.contains("DEX") || name.contains("LUK")) {
-            handleStatUpgrade(player, name, event.isLeftClick(), event.isRightClick());
-        }
-
-        // 4. Handle Reset/Confirm Buttons
+        // 3. Handle Reset/Confirm Buttons (ใน Tab.RESET_CONFIRM)
         else if (name.contains("[CONFIRM] Reset Stats")) {
             performReset(player);
             player.closeInventory();
         }
-        else if (name.contains("[CANCEL]") && title.contains("RESET_CONFIRM")) {
+        else if (name.contains("[CANCEL]") && slot == 31) {
             new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
         }
-        // Note: Allocate (Confirm/Cancel) buttons (Slots 47, 51) are placeholders and need to be implemented for bulk changes.
+
+        // 4. Handle Stat Allocation (+1 Buttons)
+        String statKey = getStatKeyFromPlusSlot(slot);
+        if (statKey != null && event.getCurrentItem().getType() == Material.GREEN_STAINED_GLASS_PANE) {
+            handleStatUpgrade(player, statKey, event.isLeftClick(), event.isRightClick());
+        }
     }
 
-    private void handleStatUpgrade(Player player, String itemName, boolean isLeftClick, boolean isRightClick) {
-        String statToUpgrade = null;
-        if (itemName.contains("STR")) statToUpgrade = "STR";
-        else if (itemName.contains("AGI")) statToUpgrade = "AGI";
-        else if (itemName.contains("VIT")) statToUpgrade = "VIT";
-        else if (itemName.contains("INT")) statToUpgrade = "INT";
-        else if (itemName.contains("DEX")) statToUpgrade = "DEX";
-        else if (itemName.contains("LUK")) statToUpgrade = "LUK";
+    // Slot positions for +1 button based on the new layout (R5: 45-50)
+    private String getStatKeyFromPlusSlot(int slot) {
+        return switch (slot) {
+            case 45 -> "STR";
+            case 46 -> "AGI";
+            case 47 -> "VIT";
+            case 48 -> "INT";
+            case 49 -> "DEX";
+            case 50 -> "LUK";
+            default -> null;
+        };
+    }
 
-        if (statToUpgrade != null) {
-            boolean success = false;
-            if (isLeftClick) {
-                success = plugin.getStatManager().upgradeStat(player, statToUpgrade);
-            } else if (isRightClick) {
-                int count = 0;
-                while (count < 10 && plugin.getStatManager().upgradeStat(player, statToUpgrade)) {
-                    count++;
-                    success = true;
-                }
-            }
+    private void handleStatUpgrade(Player player, String statKey, boolean isLeftClick, boolean isRightClick) {
+        if (statKey == null) return;
 
-            if (success) {
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
-                plugin.getAttributeHandler().updatePlayerStats(player);
-                plugin.getManaManager().updateBar(player);
-                new CharacterGUI(plugin).open(player, Tab.BASIC_INFO); // Refresh GUI
-            } else {
-                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 0.5f);
-                player.sendMessage("§cNot enough points!");
+        boolean success = false;
+        if (isLeftClick) {
+            success = plugin.getStatManager().upgradeStat(player, statKey);
+        } else if (isRightClick) {
+            int count = 0;
+            while (count < 10 && plugin.getStatManager().upgradeStat(player, statKey)) {
+                count++;
+                success = true;
             }
+        }
+
+        if (success) {
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
+            plugin.getAttributeHandler().updatePlayerStats(player);
+            plugin.getManaManager().updateBar(player);
+            new CharacterGUI(plugin).open(player, Tab.BASIC_INFO); // Refresh GUI
+        } else {
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 0.5f);
+            player.sendMessage("§cNot enough points!");
         }
     }
 
@@ -109,8 +115,9 @@ public class GUIListener implements Listener {
             player.sendMessage("§bUsed 1x " + resetItem.name() + " to reset!");
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1f);
         } else {
-            player.sendMessage("§cNo free resets! You need 1x " + resetItem.name() + ".");
+            player.sendMessage("§cNo free resets! You need 1x " + (resetItem != null ? resetItem.name() : "NETHER_STAR") + ".");
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1f, 1f);
+            return;
         }
 
         plugin.getAttributeHandler().updatePlayerStats(player);

@@ -1,6 +1,10 @@
 package org.rostats;
 
+import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -17,6 +21,8 @@ import org.rostats.handler.CombatHandler;
 import org.rostats.handler.ManaManager;
 import org.rostats.hook.PAPIHook;
 
+import java.util.UUID;
+
 public class ROStatsPlugin extends JavaPlugin implements Listener {
 
     private StatManager statManager;
@@ -27,10 +33,10 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        // 0. Load Config (NEW)
+        // 0. Load Config
         saveDefaultConfig();
 
-        // 1. Initialize Managers (UPDATE: Passing this)
+        // 1. Initialize Managers
         this.statManager = new StatManager(this);
         this.dataManager = new DataManager(this);
         this.manaManager = new ManaManager(this);
@@ -44,7 +50,7 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);
 
-        // 3. Register Commands (Commands remain the same, but behavior changes via PlayerCommand)
+        // 3. Register Commands
         PluginCommand statusCmd = getCommand("status");
         if (statusCmd != null) statusCmd.setExecutor(new PlayerCommand(this));
 
@@ -92,6 +98,28 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         dataManager.savePlayerData(event.getPlayer());
+    }
+
+    // NEW: Helper method for Floating Text (Hologram)
+    public void showFloatingText(UUID playerUUID, String text) {
+        Player player = Bukkit.getPlayer(playerUUID);
+        if (player == null || !player.isOnline()) return;
+
+        Location loc = player.getLocation().add(0, 2.5, 0); // Position above the player
+
+        getServer().getScheduler().runTask(this, () -> {
+            ArmorStand stand = loc.getWorld().spawn(loc, ArmorStand.class);
+            stand.setVisible(false);
+            stand.setGravity(false);
+            stand.setMarker(true);
+            stand.setCustomNameVisible(true);
+            stand.customName(Component.text(text));
+
+            // Make it float upwards and remove after 2 seconds
+            getServer().getScheduler().runTaskLater(this, () -> {
+                stand.remove();
+            }, 40L); // 2 seconds * 20 ticks/sec
+        });
     }
 
     public StatManager getStatManager() { return statManager; }
