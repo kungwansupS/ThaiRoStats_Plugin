@@ -11,9 +11,10 @@ import org.rostats.ROStatsPlugin;
 import org.rostats.data.PlayerData;
 import org.rostats.data.StatManager;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.inventory.ItemFlag; // NEW IMPORT
+import org.bukkit.inventory.ItemFlag;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class CharacterGUI {
@@ -45,7 +46,6 @@ public class CharacterGUI {
         if (tab == Tab.BASIC_INFO) {
             displayAllocationMatrix(inv, player, data);
         } else if (tab == Tab.GENERAL) {
-            // Placeholder content display
             inv.setItem(18, createItem(Material.BOOK, "§9§lGeneral Attribute Data", getGeneralLore(player, data)));
         } else if (tab == Tab.ADVANCED) {
             inv.setItem(18, createItem(Material.ENCHANTED_BOOK, "§6§lAdvanced Attribute Data", getAdvancedLore(player, data)));
@@ -106,17 +106,17 @@ public class CharacterGUI {
         List<String> lore = new ArrayList<>();
         lore.add("§7--- สถานะปัจจุบัน ---");
 
-        lore.add("§cHP: §f" + String.format("%.0f/%.0f", currentHP, maxHP));
+        lore.add("§aHP: §f" + String.format("%.0f/%.0f", currentHP, maxHP));
         lore.add(createBar(currentHP, maxHP, "HP"));
         lore.add("§bSP: §f" + String.format("%.0f/%.0f", data.getCurrentSP(), data.getMaxSP()));
         lore.add(createBar(data.getCurrentSP(), data.getMaxSP(), "SP"));
-        lore.add("§7Base Lv§a" + baseLevel + " §8(" + data.getBaseExp() + "/" + data.getBaseExpReq() + ")");
+        lore.add("§9Base Lv§a" + baseLevel + " §8(" + data.getBaseExp() + "/" + data.getBaseExpReq() + ")");
         lore.add(createBar(data.getBaseExp(), data.getBaseExpReq(), "BASE_LV"));
-        lore.add("§7Job Lv§a" + data.getJobLevel() + " §8(" + data.getJobExp() + "/" + data.getJobExpReq() + ")");
+        lore.add("§eJob Lv§a" + data.getJobLevel() + " §8(" + data.getJobExp() + "/" + data.getJobExpReq() + ")");
         lore.add(createBar(data.getJobExp(), data.getJobExpReq(), "JOB_LV"));
-        lore.add("§7Stamina: §a100/100");
+        lore.add("§cStamina: §a100/100");
         lore.add(createBar(100.0, 100.0, "STAMINA"));
-        lore.add("§6Power: §f" + String.format("%.0f", power));
+        lore.add("§9Power: §f" + String.format("%.0f", power));
         lore.add(createBar(power, maxPower, "POWER"));
         lore.add("§7--------------------");
         lore.add("§7คลิกเพื่อเปิดหน้าจออัพเกรดสเตตัส");
@@ -267,7 +267,7 @@ public class CharacterGUI {
     }
 
     // --- Stat Row Helper (R1, R2, R3, R4, R5) ---
-
+    // This now calls a dedicated helper for stat descriptions
     private void createStatRow(Inventory inv, Player player, PlayerData data, String statKey, Material mat, int statSlot, int bonusSlot, int reqSlot, int addSlot, int minusSlot, String statFullName) {
         StatManager stats = plugin.getStatManager();
         int currentVal = data.getStat(statKey);
@@ -277,17 +277,20 @@ public class CharacterGUI {
         int totalVal = currentVal + bonusVal + pendingCount;
 
         int costNextPoint = stats.getStatCost(currentVal + pendingCount);
-        int costPreviousPoint = stats.getStatCost(currentVal + pendingCount - 1); // Cost to gain the point being removed
+        int costPreviousPoint = stats.getStatCost(currentVal + pendingCount - 1);
+
+        // Get the specific stat descriptions
+        List<String> statLines = new ArrayList<>();
+        statLines.add("§7Stats (แต้มที่อัพ): §e" + currentVal + (pendingCount > 0 ? " §a(+" + pendingCount + ")" : ""));
+        statLines.add("§7Total: §a" + totalVal); // Base/Total line
+        statLines.add("§7"); // Separator
+        statLines.addAll(getStatDescriptionLore(statKey)); // New detailed description lines
 
         // 1. Stat Icon & Value (Slot: R1)
-        inv.setItem(statSlot, createItem(mat, statFullName,
-                "§7Stats (แต้มที่อัพ): §e" + currentVal + (pendingCount > 0 ? " §a(+" + pendingCount + ")" : ""),
-                "§7Total: §e" + totalVal,
-                "§7หน้าที่: [TBD]"
-        ));
+        inv.setItem(statSlot, createItem(mat, statFullName, statLines.toArray(new String[0])));
 
         // 2. Bonus Slot (Slot: R2)
-        inv.setItem(bonusSlot, createItem(Material.DIAMOND, "§b§lBonus (" + statKey + ")", // Specify Stat in Bonus Name
+        inv.setItem(bonusSlot, createItem(Material.DIAMOND, "§b§lBonus (" + statKey + ")",
                 "§7Bonus Stats (จากอุปกรณ์/บัฟ): §b" + bonusVal,
                 "§8(ยังไม่เปิดใช้งาน)"));
 
@@ -314,8 +317,62 @@ public class CharacterGUI {
         ));
     }
 
-    // --- General Helpers ---
+    // NEW: Helper method to generate detailed stat descriptions
+    private List<String> getStatDescriptionLore(String statKey) {
+        List<String> lines = new ArrayList<>();
 
+        switch (statKey) {
+            case "STR":
+                lines.add("§cSTR §7- เพิ่มพลังโจมตีทางกายภาพ");
+                lines.add("§7• Melee ATK: §f+1 §7ต่อ STR");
+                lines.add("§7• Ranged ATK: §f+0.2 §7ต่อ STR");
+                lines.add("§7• Melee Weapon ATK: §f+0.5%");
+                lines.add("§7• Range Weapon ATK: §f+0.5%");
+                break;
+            case "AGI":
+                lines.add("§bAGI §7- เพิ่มความเร็วและความคล่องตัว");
+                lines.add("§7• FLEE: §f+1 §7ต่อ AGI");
+                lines.add("§7• Physical DEF: §f+0.2 §7ต่อ AGI");
+                lines.add("§7• ASPD เพิ่มขึ้นเล็กน้อย");
+                break;
+            case "VIT":
+                lines.add("§aVIT §7- เพิ่มความทนทานและการป้องกัน");
+                lines.add("§7• Max HP: §f+1% §7ต่อ VIT");
+                lines.add("§7• Physical DEF: §f+0.5 §7ต่อ VIT");
+                lines.add("§7• Magic DEF: §f+0.2 §7ต่อ VIT");
+                lines.add("§7• HP Recovery เพิ่มขึ้นเล็กน้อย");
+                break;
+            case "INT":
+                lines.add("§dINT §7- เพิ่มพลังเวทและประสิทธิภาพการใช้สกิล");
+                lines.add("§7• MATK: §f+1.5 §7ต่อ INT");
+                lines.add("§7• Max SP: §f+1% §7ต่อ INT");
+                lines.add("§7• Magic DEF: §f+1 §7ต่อ INT");
+                lines.add("§7• SP Recovery เพิ่มขึ้นเล็กน้อย");
+                lines.add("§7• เวลาร่ายสกิลลดลงเล็กน้อย");
+                break;
+            case "DEX":
+                lines.add("§6DEX §7- เพิ่มความแม่นยำและพลังโจมตีระยะไกล");
+                lines.add("§7• Ranged ATK: §f+1 §7ต่อ DEX");
+                lines.add("§7• Melee ATK: §f+0.2 §7ต่อ DEX");
+                lines.add("§7• Magic DEF: §f+0.2 §7ต่อ DEX");
+                lines.add("§7• Range Weapon ATK: §f+0.5%");
+                lines.add("§7• Magic Damage Reduction: §f+0.2");
+                lines.add("§7• HIT: §f+1 §7ต่อ DEX");
+                lines.add("§7• ASPD เพิ่มขึ้นเล็กน้อย");
+                lines.add("§7• เวลาร่ายสกิลลดลงเล็กน้อย");
+                break;
+            case "LUK":
+                lines.add("§eLUK §7- เพิ่มค่าคริติคอลและความหลากหลายของค่าสถานะ");
+                lines.add("§7• CRIT: §f+0.3 §7ต่อ LUK");
+                lines.add("§7• Critical DEF: §f+0.2 §7ต่อ LUK");
+                lines.add("§7• Physical ATK: §f+0.2 §7ต่อ LUK");
+                lines.add("§7• Magical ATK: §f+0.3 §7ต่อ LUK");
+                break;
+        }
+        return lines;
+    }
+
+    // (The rest of the class methods remain the same)
     private ItemStack createTabItem(Tab currentTab, Tab activeTab, Material mat, String name, String[] desc) {
         ItemStack item = createItem(mat, (currentTab == activeTab ? "§a§l" : "§f") + name, desc);
         if (currentTab == activeTab) item.addUnsafeEnchantment(Enchantment.UNBREAKING, 1);
@@ -345,7 +402,6 @@ public class CharacterGUI {
         return bar.toString();
     }
 
-    // Helper for 2-Column Formatting
     private String formatTwoColumns(String left, String right) {
         final int MAX_LENGTH = 38;
         String strippedLeft = left.replaceAll("§[0-9a-fk-or]", "");
@@ -366,4 +422,8 @@ public class CharacterGUI {
         item.setItemMeta(meta);
         return item;
     }
+
+    // LORE GENERATION METHODS (for Tabs)
+    // (getBasicStatusLore, getGeneralLore, getAdvancedLore, getSpecialLore are defined above)
+
 }
