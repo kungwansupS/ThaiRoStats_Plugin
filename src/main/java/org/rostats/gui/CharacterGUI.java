@@ -18,7 +18,7 @@ import java.util.List;
 public class CharacterGUI {
 
     public enum Tab {
-        BASIC_INFO, MORE_INFO, RESET_CONFIRM
+        BASIC_INFO, MORE_INFO, RESET_CONFIRM, GENERAL, ADVANCED, SPECIAL
     }
 
     private final ROStatsPlugin plugin;
@@ -41,11 +41,12 @@ public class CharacterGUI {
         }
 
         // 2. Content Display
+        // Tabs are now consolidated in R0
         if (tab == Tab.BASIC_INFO) {
             displayAllocationMatrix(inv, player, data);
-        } else if (tab == Tab.MORE_INFO) {
-            // Content is in the Tab Lore, but we clear the matrix area for safety
-            displayMoreInfoScreen(inv, player, data);
+        } else if (tab == Tab.MORE_INFO || tab == Tab.GENERAL || tab == Tab.ADVANCED || tab == Tab.SPECIAL) {
+            // General, Advanced, Special screens are placeholders for future implementation
+            inv.setItem(12, createItem(Material.PAPER, "§f§lข้อมูล Combat (TBD)", "§7ข้อมูลนี้อยู่ใน Lore ของ Tab Items แล้ว", "§7คลิกที่ Tab Item เพื่อเปลี่ยนหน้าต่าง"));
         } else if (tab == Tab.RESET_CONFIRM) {
             displayResetConfirm(inv, player, data);
         }
@@ -60,14 +61,15 @@ public class CharacterGUI {
         inv.setItem(0, createItem(Material.PLAYER_HEAD, "§e§lCharacter Details", "§7ชื่อ: §f" + player.getName()));
         inv.setItem(1, createItem(Material.GOLDEN_HELMET, "§e§lJob/Class Info", "§7อาชีพ: NOVICE (Placeholder)"));
 
-        // Tabs (R0 C2, C3) - Consolidated Info into Lore
+        // Tabs (R0 C2, C3, C4, C5) - Consolidated Info into Lore
         inv.setItem(2, createTabItem(Tab.BASIC_INFO, activeTab, Material.DIAMOND, "§aBasic Info.", getBasicStatusLore(player, data)));
-        inv.setItem(3, createTabItem(Tab.MORE_INFO, activeTab, Material.PAPER, "§fMore Info.", getMoreInfoLore(player, data)));
+        inv.setItem(3, createTabItem(Tab.GENERAL, activeTab, Material.BOOK, "§9General Attribute", getGeneralLore(player, data))); // NEW Tab
+        inv.setItem(4, createTabItem(Tab.ADVANCED, activeTab, Material.ENCHANTED_BOOK, "§6Advanced Attribute", getAdvancedLore(player, data))); // NEW Tab
+        inv.setItem(5, createTabItem(Tab.SPECIAL, activeTab, Material.NETHER_STAR, "§dSpecial Attribute", getSpecialLore(player, data))); // NEW Tab
 
-        // R0 Presets (C4-C6)
-        inv.setItem(4, createItem(Material.LIME_DYE, "§aPreset 1", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 1"));
-        inv.setItem(5, createItem(Material.BLUE_DYE, "§bPreset 2", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 2"));
-        inv.setItem(6, createItem(Material.RED_DYE, "§cPreset 3", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 3"));
+        // R0 Presets (C6, C7)
+        inv.setItem(6, createItem(Material.LIME_DYE, "§aPreset 1", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 1"));
+        inv.setItem(7, createItem(Material.BLUE_DYE, "§bPreset 2", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 2"));
 
         // R0 C8: Exit
         inv.setItem(8, createItem(Material.BARRIER, "§c§lX", "§7คลิกเพื่อปิดหน้าจอสถานะ"));
@@ -81,7 +83,7 @@ public class CharacterGUI {
         // R4 C6: Reset Select (Temp) (Slot 42)
         inv.setItem(42, createItem(Material.ANVIL, "§c§lReset Select", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อยกเลิกการอัพเกรดที่รอดำเนินการ"));
 
-        // R4 C8: Reset All (Slot 44)
+        // R4 C8: Reset All (Slot 44) - Placeholder for Reset All Button
         inv.setItem(44, createItem(Material.REDSTONE, "§c§lReset All", "§7คลิกเพื่อเข้าสู่หน้ายืนยันการรีเซ็ตแต้มทั้งหมด"));
 
         // R5 C7: Allocate (Slot 52)
@@ -89,8 +91,6 @@ public class CharacterGUI {
     }
 
     // --- LORE GENERATION ---
-
-    // 1. Basic Status Lore (HP/SP/Level/Bars)
     private String[] getBasicStatusLore(Player player, PlayerData data) {
         StatManager stats = plugin.getStatManager();
         double maxHP = player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
@@ -120,53 +120,76 @@ public class CharacterGUI {
         return lore.toArray(new String[0]);
     }
 
-    // 2. More Info Lore (All Combat Stats)
-    private String[] getMoreInfoLore(Player player, PlayerData data) {
+    // 2. General Attribute Lore (Section 1)
+    private String[] getGeneralLore(Player player, PlayerData data) {
         StatManager stats = plugin.getStatManager();
+        double maxHP = player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
         double currentSPRegen = 1 + (data.getStat("INT") / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0)) + (data.getMaxSP() / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0));
 
         List<String> lore = new ArrayList<>();
         lore.add("§7");
-
-        // GENERAL ATTRIBUTE (พื้นฐาน)
-        lore.add("§8§l[§f§lGENERAL ATTRIBUTE§8§l]");
-        lore.add(String.format("§fMax HP: §e%.0f | §fMax SP: §e%.0f", player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue(), data.getMaxSP()));
-        lore.add(String.format("§fP.ATK: §c%.0f | §fM.ATK: §b%.0f", stats.getPhysicalAttack(player), stats.getMagicAttack(player)));
-        lore.add(String.format("§fP.DEF: §6%.0f | §fM.DEF: §5%.0f", stats.getSoftDef(player), stats.getSoftMDef(player)));
-        lore.add(String.format("§fHP Recovery: §20 | §fSP Recovery: §1%.1f", currentSPRegen));
-        lore.add(String.format("§fHIT: §e%d | §fFLEE: §b%d", stats.getHit(player), stats.getFlee(player)));
-        lore.add("§7---");
-
-        // ADVANCED ATTRIBUTE (ขั้นสูง)
-        lore.add("§8§l[§6§lADVANCED ATTRIBUTE§8§l]");
-        lore.add("-- Critical --");
-        lore.add(String.format("§fCRIT: §e%.1f | §fCRIT RES: §7%.1f", stats.getCritChance(player), data.getCritRes()));
-        lore.add(String.format("§fCRIT DMG: §6%.1f%% | §fCRIT DMG RES: §8%.1f%%", data.getCritDmgPercent(), data.getCritDmgResPercent()));
-        lore.add("-- Damage Bonus / Reduction --");
-        lore.add(String.format("§fP.DMG Bonus: §c%.1f%% | §fM.DMG Bonus: §b%.1f%%", data.getPDmgBonusPercent(), data.getMDmgBonusPercent()));
-        lore.add(String.format("§fP.DMG +: §c%.0f | §fM.DMG +: §9%.0f", data.getPDmgBonusFlat(), data.getMDmgBonusFlat()));
-        lore.add(String.format("§fP.DMG Red: §3%.1f%% | §fM.DMG Red: §5%.1f%%", data.getPDmgReductionPercent(), data.getMDmgReductionPercent()));
-        lore.add("-- Penetration / Ignore DEF --");
-        lore.add(String.format("§fP.PEN (flat): §d%.0f | §fM.PEN (flat): §d%.0f", data.getPPenFlat(), data.getMPenFlat()));
-        lore.add(String.format("§fP.PEN%%: §d%.1f%% | §fM.PEN%%: §d%.1f%%", stats.getPhysicalPenetration(player) * 100, data.getMPenPercent()));
-        lore.add(String.format("§fIgnore P.DEF: §c%.0f | §fIgnore M.DEF: §b%.0f", data.getIgnorePDefFlat(), data.getIgnoreMDefFlat()));
-        lore.add(String.format("§fIgnore P.DEF%%: §6%.1f%% | §fIgnore M.DEF%%: §5%.1f%%", data.getIgnorePDefPercent(), data.getIgnoreMDefPercent()));
-        lore.add("§7---");
-
-        // SPECIAL ATTRIBUTE (พิเศษ)
-        lore.add("§f§l-- SPECIAL ATTRIBUTE (พิเศษ) --");
-        lore.add(String.format("§fMax HP%%: §a%.1f | §fMax SP%%: §b%.1f", data.getMaxHPPercent(), data.getMaxSPPercent()));
-        lore.add(String.format("§fLifesteal P: §c%.1f%% | §fTrue DMG: §4%.0f", data.getLifestealPPercent(), data.getTrueDamageFlat()));
-        lore.add(String.format("§fShield: §3%.0f | §fShield Rate: §6%.1f%%", data.getShieldValueFlat(), data.getShieldRatePercent()));
+        lore.add("§8§l[§f§lGENERAL ATTRIBUTE (พื้นฐาน)§8§l]");
+        lore.add("§fMax HP: §e" + String.format("%.0f", maxHP) + " | §fMax SP: §e" + String.format("%.0f", data.getMaxSP()));
+        lore.add("§fP.ATK: §c" + String.format("%.0f", stats.getPhysicalAttack(player)) + " | §fM.ATK: §b" + String.format("%.0f", stats.getMagicAttack(player)));
+        lore.add("§fP.DEF: §6" + String.format("%.0f", stats.getSoftDef(player)) + " | §fM.DEF: §5" + String.format("%.0f", stats.getSoftMDef(player)));
+        lore.add("§fHP Recovery: §20 | §fSP Recovery: §1" + String.format("%.1f", currentSPRegen));
+        lore.add("§fHIT: §e" + stats.getHit(player) + " | §fFLEE: §b" + stats.getFlee(player));
         lore.add("§7--------------------");
-        lore.add("§7คลิกเพื่อเปิดหน้าจอข้อมูลเพิ่มเติม (ยังไม่มีเนื้อหา)");
+        lore.add("§7คลิกเพื่อเปิดหน้าจอข้อมูลการต่อสู้พื้นฐาน");
 
         return lore.toArray(new String[0]);
     }
 
-    private void displayMoreInfoScreen(Inventory inv, Player player, PlayerData data) {
-        // Slot 15 (R1 C6) is used for More Info details
-        // Display the detailed lore content in a dedicated block if needed, but for now, we rely on the tab lore.
+    // 3. Advanced Attribute Lore (Section 2)
+    private String[] getAdvancedLore(Player player, PlayerData data) {
+        StatManager stats = plugin.getStatManager();
+
+        List<String> lore = new ArrayList<>();
+        lore.add("§7");
+        lore.add("§8§l[§6§lADVANCED ATTRIBUTE (ขั้นสูง)§8§l]");
+
+        // Critical
+        lore.add("§e-- Critical --");
+        lore.add("§fCRIT: §e" + String.format("%.1f", stats.getCritChance(player)) + " | §fCRIT RES: §7" + String.format("%.1f", data.getCritRes()));
+        lore.add("§fCRIT DMG%: §6" + String.format("%.1f", data.getCritDmgPercent()) + "% | §fCRIT DMG RES%: §8" + String.format("%.1f", data.getCritDmgResPercent()) + "%");
+
+        // DMG Bonus/Reduction
+        lore.add("§e-- Damage Bonus / Reduction --");
+        lore.add("§fP.DMG Bonus%: §c" + String.format("%.1f", data.getPDmgBonusPercent()) + "% | §fM.DMG Bonus%: §b" + String.format("%.1f", data.getMDmgBonusPercent()) + "%");
+        lore.add("§fP.DMG +: §c" + String.format("%.0f", data.getPDmgBonusFlat()) + " | §fM.DMG +: §9" + String.format("%.0f", data.getMDmgBonusFlat()));
+        lore.add("§fP.DMG Red: §3" + String.format("%.1f", data.getPDmgReductionPercent()) + "% | §fM.DMG Red: §5" + String.format("%.1f", data.getMDmgReductionPercent()) + "%");
+
+        // Penetration / Ignore DEF
+        lore.add("§e-- Penetration / Ignore DEF --");
+        lore.add("§fP.PEN: §d" + String.format("%.0f", data.getPPenFlat()) + " | §fM.PEN: §d" + String.format("%.0f", data.getMPenFlat()));
+        lore.add("§fP.PEN%: §d" + String.format("%.1f%%", stats.getPhysicalPenetration(player) * 100) + " | §fM.PEN%: §d" + String.format("%.1f", data.getMPenPercent()) + "%");
+        lore.add("§fIgnore P.DEF: §c" + String.format("%.0f", data.getIgnorePDefFlat()) + " | §fIgnore M.DEF: §b" + String.format("%.0f", data.getIgnoreMDefFlat()));
+        lore.add("§fIgnore P.DEF%: §6" + String.format("%.1f", data.getIgnorePDefPercent()) + "% | §fIgnore M.DEF%: §5" + String.format("%.1f", data.getIgnoreMDefPercent()) + "%");
+
+        // Speed / Cast Time
+        lore.add("§e-- Speed / Cast Time --");
+        lore.add("§fASPD: §a" + String.format("%.0f%%", (stats.getAspdBonus(player) * 100)) + " | §fMSPD: §a" + String.format("%.1f", data.getMSpdPercent()) + "%");
+        lore.add("§fVariable CT: §d" + String.format("%.1f", data.getVarCTPercent()) + "% | §fFixed CT: §5" + String.format("%.1f", data.getFixedCTPercent()) + "%");
+
+        lore.add("§7--------------------");
+        lore.add("§7คลิกเพื่อเปิดหน้าจอข้อมูลการต่อสู้ขั้นสูง");
+
+        return lore.toArray(new String[0]);
+    }
+
+    // 4. Special Attribute Lore (Section 3)
+    private String[] getSpecialLore(Player player, PlayerData data) {
+        List<String> lore = new ArrayList<>();
+        lore.add("§7");
+        lore.add("§8§l[§a§lSPECIAL ATTRIBUTE (พิเศษ)§8§l]");
+
+        lore.add("§fMax HP%: §a" + String.format("%.1f", data.getMaxHPPercent()) + "% | §fMax SP%: §b" + String.format("%.1f", data.getMaxSPPercent()) + "%");
+        lore.add("§fLifesteal P: §c" + String.format("%.1f", data.getLifestealPPercent()) + "% | §fTrue DMG: §4" + String.format("%.0f", data.getTrueDamageFlat()));
+        lore.add("§fShield: §3" + String.format("%.0f", data.getShieldValueFlat()) + " | §fShield Rate: §6" + String.format("%.1f", data.getShieldRatePercent()) + "%");
+        lore.add("§7--------------------");
+        lore.add("§7คลิกเพื่อเปิดหน้าจอข้อมูลพิเศษ");
+
+        return lore.toArray(new String[0]);
     }
 
 
