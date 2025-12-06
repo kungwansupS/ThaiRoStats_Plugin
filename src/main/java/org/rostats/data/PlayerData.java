@@ -18,7 +18,7 @@ public class PlayerData {
     // Pending Stats
     private final Map<String, Integer> pendingStats = new HashMap<>();
 
-    // NEW: Advanced/Bonus Attributes (All initialized to 0.0)
+    // Advanced/Bonus Attributes (All initialized to 0.0)
     private double pAtkBonusFlat = 0.0;
     private double mAtkBonusFlat = 0.0;
     private double critRes = 0.0;
@@ -65,7 +65,11 @@ public class PlayerData {
     private double trueDamageFlat = 0.0;
     private double shieldValueFlat = 0.0;
     private double shieldRatePercent = 0.0;
-    // --- END NEW FIELDS ---
+    private double weaponPAtk = 0.0;
+    private double weaponMAtk = 0.0;
+    private double hitBonusFlat = 0.0;
+    private double fleeBonusFlat = 0.0;
+    private double baseMSPD = 0.1;
 
     private final ROStatsPlugin plugin;
 
@@ -74,12 +78,11 @@ public class PlayerData {
         stats.put("STR", 1); stats.put("AGI", 1); stats.put("VIT", 1);
         stats.put("INT", 1); stats.put("DEX", 1); stats.put("LUK", 1);
         calculateMaxSP();
-        // Initialize pending stats to 0
         pendingStats.put("STR", 0); pendingStats.put("AGI", 0); pendingStats.put("VIT", 0);
         pendingStats.put("INT", 0); pendingStats.put("DEX", 0); pendingStats.put("LUK", 0);
     }
 
-    // --- Getters for New Fields (Full list to ensure no missing methods) ---
+    // --- Getters for New Fields ---
     public double getPAtkBonusFlat() { return pAtkBonusFlat; }
     public double getMAtkBonusFlat() { return mAtkBonusFlat; }
     public double getCritRes() { return critRes; }
@@ -126,6 +129,11 @@ public class PlayerData {
     public double getCritDmgResPercent() { return critDmgResPercent; }
     public double getIgnorePDefFlat() { return ignorePDefFlat; }
     public double getIgnoreMDefFlat() { return ignoreMDefFlat; }
+    public double getWeaponPAtk() { return weaponPAtk; }
+    public double getWeaponMAtk() { return weaponMAtk; }
+    public double getHitBonusFlat() { return hitBonusFlat; }
+    public double getFleeBonusFlat() { return fleeBonusFlat; }
+    public double getBaseMSPD() { return baseMSPD; }
 
     // --- Core Methods (Modified) ---
     public int getStat(String key) { return stats.getOrDefault(key.toUpperCase(), 1); }
@@ -133,43 +141,27 @@ public class PlayerData {
     public Set<String> getStatKeys() { return stats.keySet(); }
     public int getPendingStat(String key) { return pendingStats.getOrDefault(key.toUpperCase(), 0); }
     public void setPendingStat(String key, int count) { pendingStats.put(key.toUpperCase(), count); }
-    public void clearPendingStats(String key) { pendingStats.put(key.toUpperCase(), 0); }
     public void clearAllPendingStats() { pendingStats.put("STR", 0); pendingStats.put("AGI", 0); pendingStats.put("VIT", 0);
         pendingStats.put("INT", 0); pendingStats.put("DEX", 0); pendingStats.put("LUK", 0); }
 
-    public void addBaseExp(long amount, UUID playerUUID) {
-        long expGained = amount;
+    // Formula A.1 (Max HP)
+    public double getMaxHP() {
+        int vit = getStat("VIT") + getPendingStat("VIT"); // Base Stat + Pending Stat
+        int baseLevel = getBaseLevel();
 
-        plugin.showFloatingText(playerUUID, "§9§l+" + expGained + " Base EXP");
-
-        this.baseExp += amount;
-        while (this.baseExp >= getExpReq(this.baseLevel)) {
-            this.baseExp -= getExpReq(this.baseLevel);
-            this.baseLevel++;
-            this.statPoints += getStatPointsGain(this.baseLevel);
-
-            plugin.showFloatingText(playerUUID, "§e§l+" + 100 + " Job EXP (Placeholder)");
-        }
-        calculateMaxSP();
+        double baseHP = 100 + vit * 25 + baseLevel * 10;
+        return Math.floor(baseHP * (1 + getMaxHPPercent() / 100.0));
     }
 
+    // Formula A.2 (Max SP)
     public double getMaxSP() {
         int intel = getStat("INT") + getPendingStat("INT");
-        double baseSP = 20 + (baseLevel * 5);
-        double intBonus = (intel * 2) * (1 + (intel / 100.0));
-        return (baseSP + intBonus) * (1 + maxSPPercent / 100.0);
+        int baseLevel = getBaseLevel();
+        double baseSP = 20 + intel * 10 + baseLevel * 3;
+        return Math.floor(baseSP * (1 + getMaxSPPercent() / 100.0));
     }
 
-    // --- EXP/LEVEL Getters ---
-    public long getBaseExp() { return baseExp; }
-    public long getBaseExpReq() { return getExpReq(baseLevel); }
-    public long getJobExp() { return 0; }
-    public long getJobExpReq() { return 1000; }
-    public int getJobLevel() { return 1; }
-    private long getExpReq(int level) { int multiplier = plugin.getConfig().getInt("exp-formula.base-exp-multiplier", 10); return (long) (Math.pow(level, 3) * multiplier); }
-    private int getStatPointsGain(int level) { int threshold = plugin.getConfig().getInt("stat-points-gain.level-50-threshold", 50); int low = plugin.getConfig().getInt("stat-points-gain.points-low-level", 5); int high = plugin.getConfig().getInt("stat-points-gain.points-high-level", 8); return (level <= threshold) ? low : high; }
-
-    // --- Standard Getters/Setters ---
+    // ... (rest of PlayerData methods remain the same) ...
     public void calculateMaxSP() { if (this.currentSP > getMaxSP()) this.currentSP = getMaxSP(); }
     public void regenSP() { double max = getMaxSP();
         if (this.currentSP < max) { int intel = getStat("INT"); double regen = 1 + (intel / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0)) + (max / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0));
@@ -188,4 +180,23 @@ public class PlayerData {
     public int getResetCount() { return resetCount; }
     public void setResetCount(int count) { this.resetCount = count; }
     public void incrementResetCount() { this.resetCount++; }
+    public void addBaseExp(long amount, UUID playerUUID) {
+        long expGained = amount;
+        plugin.showFloatingText(playerUUID, "§9§l+" + expGained + " Base EXP");
+        this.baseExp += amount;
+        while (this.baseExp >= getExpReq(this.baseLevel)) {
+            this.baseExp -= getExpReq(this.baseLevel);
+            this.baseLevel++;
+            this.statPoints += getStatPointsGain(this.baseLevel);
+            plugin.showFloatingText(playerUUID, "§e§l+" + 100 + " Job EXP (Placeholder)");
+        }
+        calculateMaxSP();
+    }
+    public long getBaseExp() { return baseExp; }
+    public long getBaseExpReq() { return getExpReq(baseLevel); }
+    public long getJobExp() { return 0; }
+    public long getJobExpReq() { return 1000; }
+    public int getJobLevel() { return 1; }
+    private long getExpReq(int level) { int multiplier = plugin.getConfig().getInt("exp-formula.base-exp-multiplier", 10); return (long) (Math.pow(level, 3) * multiplier); }
+    private int getStatPointsGain(int level) { int threshold = plugin.getConfig().getInt("stat-points-gain.level-50-threshold", 50); int low = plugin.getConfig().getInt("stat-points-gain.points-low-level", 5); int high = plugin.getConfig().getInt("stat-points-gain.points-high-level", 8); return (level <= threshold) ? low : high; }
 }

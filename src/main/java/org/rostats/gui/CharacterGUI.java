@@ -11,6 +11,7 @@ import org.rostats.ROStatsPlugin;
 import org.rostats.data.PlayerData;
 import org.rostats.data.StatManager;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.inventory.ItemFlag; // NEW IMPORT
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +45,7 @@ public class CharacterGUI {
         if (tab == Tab.BASIC_INFO) {
             displayAllocationMatrix(inv, player, data);
         } else if (tab == Tab.GENERAL) {
-            // General, Advanced, Special screens are placeholders for future implementation
+            // Placeholder content display
             inv.setItem(18, createItem(Material.BOOK, "§9§lGeneral Attribute Data", getGeneralLore(player, data)));
         } else if (tab == Tab.ADVANCED) {
             inv.setItem(18, createItem(Material.ENCHANTED_BOOK, "§6§lAdvanced Attribute Data", getAdvancedLore(player, data)));
@@ -66,9 +67,9 @@ public class CharacterGUI {
 
         // Tabs (R0 C2, C3, C4, C5) - Consolidated Info into Lore
         inv.setItem(2, createTabItem(Tab.BASIC_INFO, activeTab, Material.DIAMOND, "§aBasic Info.", getBasicStatusLore(player, data)));
-        inv.setItem(3, createTabItem(Tab.GENERAL, activeTab, Material.BOOK, "§9General Attribute", getGeneralLore(player, data))); // General Tab
-        inv.setItem(4, createTabItem(Tab.ADVANCED, activeTab, Material.ENCHANTED_BOOK, "§6Advanced Attribute", getAdvancedLore(player, data))); // Advanced Tab
-        inv.setItem(5, createTabItem(Tab.SPECIAL, activeTab, Material.NETHER_STAR, "§dSpecial Attribute", getSpecialLore(player, data))); // Special Tab
+        inv.setItem(3, createTabItem(Tab.GENERAL, activeTab, Material.BOOK, "§9General Attribute", getGeneralLore(player, data)));
+        inv.setItem(4, createTabItem(Tab.ADVANCED, activeTab, Material.ENCHANTED_BOOK, "§6Advanced Attribute", getAdvancedLore(player, data)));
+        inv.setItem(5, createTabItem(Tab.SPECIAL, activeTab, Material.NETHER_STAR, "§dSpecial Attribute", getSpecialLore(player, data)));
 
         // R0 Presets (C6, C7)
         inv.setItem(6, createItem(Material.LIME_DYE, "§aPreset 1", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 1"));
@@ -76,8 +77,6 @@ public class CharacterGUI {
 
         // R0 C8: Exit
         inv.setItem(8, createItem(Material.BARRIER, "§c§lX", "§7คลิกเพื่อปิดหน้าจอสถานะ"));
-
-        // R1 Presets (C6, C7, C8) - Not used in R1/R2 in the final layout, moved to R0 C6-C7
 
         // R3 C6: Points Left (Slot 33)
         inv.setItem(33, createItem(Material.GOLD_NUGGET, "§6§lแต้มคงเหลือ", "§7แต้มที่สามารถใช้อัพเกรด Stat ได้: §e" + data.getStatPoints()));
@@ -167,9 +166,9 @@ public class CharacterGUI {
 
         // DMG Bonus/Reduction
         lore.add("§e-- DAMAGE BONUS / REDUCTION --");
-        lore.add(formatTwoColumns("§fP.DMG+: §c" + String.format("%.1f", data.getPDmgBonusPercent()) + "%", "§fM.DMG+: §b" + String.format("%.1f", data.getMDmgBonusPercent()) + "%"));
-        lore.add(formatTwoColumns("§fP.DMG+ Flat: §c" + String.format("%.0f", data.getPDmgBonusFlat()), "§fM.DMG+ Flat: §9" + String.format("%.0f", data.getMDmgBonusFlat())));
-        lore.add(formatTwoColumns("§fP.Red: §3" + String.format("%.1f", data.getPDmgReductionPercent()) + "%", "§fM.Red: §5" + String.format("%.1f", data.getMDmgReductionPercent()) + "%"));
+        lore.add(formatTwoColumns("§fP.DMG Bonus%: §c" + String.format("%.1f", data.getPDmgBonusPercent()) + "%", "§fM.DMG Bonus%: §b" + String.format("%.1f", data.getMDmgBonusPercent()) + "%"));
+        lore.add(formatTwoColumns("§fP.DMG +: §c" + String.format("%.0f", data.getPDmgBonusFlat()), "§fM.DMG +: §9" + String.format("%.0f", data.getMDmgBonusFlat())));
+        lore.add(formatTwoColumns("§fP.DMG Red: §3" + String.format("%.1f", data.getPDmgReductionPercent()) + "%", "§fM.Red: §5" + String.format("%.1f", data.getMDmgReductionPercent()) + "%"));
 
         // Melee / Range
         lore.add("§e-- MELEE / RANGE --");
@@ -260,6 +259,11 @@ public class CharacterGUI {
         inv.setItem(31, createItem(Material.RED_CONCRETE, "§c§l[ยกเลิก]",
                 "§7คลิกเพื่อกลับไปหน้าจอ Basic Info",
                 "§eคลิกเพื่อยกเลิก"));
+
+        // Clear R1 C3-C5 area
+        inv.setItem(12, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
+        inv.setItem(13, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
+        inv.setItem(14, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
     }
 
     // --- Stat Row Helper (R1, R2, R3, R4, R5) ---
@@ -343,12 +347,11 @@ public class CharacterGUI {
 
     // Helper for 2-Column Formatting
     private String formatTwoColumns(String left, String right) {
-        final int MAX_LENGTH = 38; // Adjusted for optimal fitting in a Minecraft Lore line
-        String strippedLeft = left.replaceAll("§[0-9a-fk-or]", ""); // Strip color codes
+        final int MAX_LENGTH = 38;
+        String strippedLeft = left.replaceAll("§[0-9a-fk-or]", "");
         int padding = MAX_LENGTH - strippedLeft.length() - right.replaceAll("§[0-9a-fk-or]", "").length();
         if (padding < 1) padding = 1;
 
-        // This ensures space alignment is visible in the Minecraft chat/lore
         return left + " ".repeat(padding) + right;
     }
 
@@ -356,6 +359,7 @@ public class CharacterGUI {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(name));
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES); // HIDE VANILLA LORE
         List<Component> loreList = new ArrayList<>();
         for (String line : lore) loreList.add(Component.text(line));
         meta.lore(loreList);
