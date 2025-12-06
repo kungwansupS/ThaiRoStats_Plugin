@@ -24,11 +24,10 @@ public class PlayerData {
     private final Map<String, Integer> pendingStats = new HashMap<>();
 
     // Advanced/Bonus Attributes (All initialized to 0.0)
-    // THESE FIELDS ARE THE RECIPIENTS OF ITEM BONUSES.
     private double pAtkBonusFlat = 0.0;
     private double mAtkBonusFlat = 0.0;
     private double critRes = 0.0;
-    private double critDmgPercent = 50.0; // Base Crit DMG is 50.0%
+    private double critDmgPercent = 50.0;
     private double critDmgResPercent = 0.0;
     private double pDmgBonusPercent = 0.0;
     private double mDmgBonusPercent = 0.0;
@@ -75,7 +74,7 @@ public class PlayerData {
     private double weaponMAtk = 0.0;
     private double hitBonusFlat = 0.0;
     private double fleeBonusFlat = 0.0;
-    private double baseMSPD = 0.1; // Base movement speed (0.1 is vanilla default)
+    private double baseMSPD = 0.1;
 
     private final ROStatsPlugin plugin;
 
@@ -86,99 +85,6 @@ public class PlayerData {
         calculateMaxSP();
         pendingStats.put("STR", 0); pendingStats.put("AGI", 0); pendingStats.put("VIT", 0);
         pendingStats.put("INT", 0); pendingStats.put("DEX", 0); pendingStats.put("LUK", 0);
-    }
-
-    // --- NEW METHOD: Apply Item Bonuses ---
-    /**
-     * Resets all item bonus fields (flat, percent) and applies new values from the map.
-     * The ItemBonusService is responsible for calculating the combined bonuses from all equipped items.
-     * This is the bridge between item bonuses (PDC) and player stats (PlayerData fields).
-     * @param bonuses Map of attribute keys to their total double bonus value.
-     */
-    public void applyBonuses(Map<String, Double> bonuses) {
-        // 1. Reset all fields (essential, as item bonuses are temporary/equipped-based)
-        pAtkBonusFlat = 0.0; mAtkBonusFlat = 0.0; critRes = 0.0;
-        critDmgPercent = 50.0; // Reset Crit DMG to base 50.0
-        critDmgResPercent = 0.0; pDmgBonusPercent = 0.0; mDmgBonusPercent = 0.0;
-        pDmgBonusFlat = 0.0; mDmgBonusFlat = 0.0; pDmgReductionPercent = 0.0;
-        mDmgReductionPercent = 0.0; meleePDmgPercent = 0.0; rangePDmgPercent = 0.0;
-        meleePDReductionPercent = 0.0; rangePDReductionPercent = 0.0; pPenFlat = 0.0;
-        mPenFlat = 0.0; pPenPercent = 0.0; mPenPercent = 0.0; ignorePDefFlat = 0.0;
-        ignoreMDefFlat = 0.0; ignorePDefPercent = 0.0; ignoreMDefPercent = 0.0;
-        aSpdPercent = 0.0; mSpdPercent = 0.0; varCTPercent = 0.0; varCTFlat = 0.0;
-        fixedCTPercent = 0.0; fixedCTFlat = 0.0; healingEffectPercent = 0.0;
-        healingReceivedPercent = 0.0; finalDmgPercent = 0.0; finalDmgResPercent = 0.0;
-        finalPDmgPercent = 0.0; finalMDmgPercent = 0.0; pveDmgBonusPercent = 0.0;
-        pvpDmgBonusPercent = 0.0; pveDmgReductionPercent = 0.0; pvpDmgReductionPercent = 0.0;
-        maxHPPercent = 0.0; maxSPPercent = 0.0; lifestealPPercent = 0.0;
-        lifestealMPercent = 0.0; trueDamageFlat = 0.0; shieldValueFlat = 0.0;
-        shieldRatePercent = 0.0; weaponPAtk = 0.0; weaponMAtk = 0.0;
-        hitBonusFlat = 0.0; fleeBonusFlat = 0.0; baseMSPD = 0.1; // Reset BaseMSPD to default (0.1)
-
-        // 2. Apply new bonuses based on map keys
-        for (Map.Entry<String, Double> entry : bonuses.entrySet()) {
-            String key = entry.getKey();
-            double value = entry.getValue();
-
-            // Using switch/case to ensure type safety and proper handling (like adding to critDmgPercent)
-            switch (key) {
-                case "pAtkBonusFlat": this.pAtkBonusFlat = value; break;
-                case "mAtkBonusFlat": this.mAtkBonusFlat = value; break;
-                case "critRes": this.critRes = value; break;
-                case "critDmgPercent": this.critDmgPercent += value; break; // Add to base 50.0
-                case "critDmgResPercent": this.critDmgResPercent = value; break;
-                case "pDmgBonusPercent": this.pDmgBonusPercent = value; break;
-                case "mDmgBonusPercent": this.mDmgBonusPercent = value; break;
-                case "pDmgBonusFlat": this.pDmgBonusFlat = value; break;
-                case "mDmgBonusFlat": this.mDmgBonusFlat = value; break;
-                case "pDmgReductionPercent": this.pDmgReductionPercent = value; break;
-                case "mDmgReductionPercent": this.mDmgReductionPercent = value; break;
-                case "meleePDmgPercent": this.meleePDmgPercent = value; break;
-                case "rangePDmgPercent": this.rangePDmgPercent = value; break;
-                case "meleePDReductionPercent": this.meleePDReductionPercent = value; break;
-                case "rangePDReductionPercent": this.rangePDReductionPercent = value; break;
-                case "pPenFlat": this.pPenFlat = value; break;
-                case "mPenFlat": this.mPenFlat = value; break;
-                case "pPenPercent": this.pPenPercent = value; break;
-                case "mPenPercent": this.mPenPercent = value; break;
-                case "ignorePDefFlat": this.ignorePDefFlat = value; break;
-                case "ignoreMDefFlat": this.ignoreMDefFlat = value; break;
-                case "ignorePDefPercent": this.ignorePDefPercent = value; break;
-                case "ignoreMDefPercent": this.ignoreMDefPercent = value; break;
-                case "aSpdPercent": this.aSpdPercent = value; break;
-                case "mSpdPercent": this.mSpdPercent = value; break;
-                case "varCTPercent": this.varCTPercent = value; break;
-                case "varCTFlat": this.varCTFlat = value; break;
-                case "fixedCTPercent": this.fixedCTPercent = value; break;
-                case "fixedCTFlat": this.fixedCTFlat = value; break;
-                case "healingEffectPercent": this.healingEffectPercent = value; break;
-                case "healingReceivedPercent": this.healingReceivedPercent = value; break;
-                case "finalDmgPercent": this.finalDmgPercent = value; break;
-                case "finalDmgResPercent": this.finalDmgResPercent = value; break;
-                case "finalPDmgPercent": this.finalPDmgPercent = value; break;
-                case "finalMDmgPercent": this.finalMDmgPercent = value; break;
-                case "pveDmgBonusPercent": this.pveDmgBonusPercent = value; break;
-                case "pvpDmgBonusPercent": this.pvpDmgBonusPercent = value; break;
-                case "pveDmgReductionPercent": this.pveDmgReductionPercent = value; break;
-                case "pvpDmgReductionPercent": this.pvpDmgReductionPercent = value; break;
-                case "maxHPPercent": this.maxHPPercent = value; break;
-                case "maxSPPercent": this.maxSPPercent = value; break;
-                case "lifestealPPercent": this.lifestealPPercent = value; break;
-                case "lifestealMPercent": this.lifestealMPercent = value; break;
-                case "trueDamageFlat": this.trueDamageFlat = value; break;
-                case "shieldValueFlat": this.shieldValueFlat = value; break;
-                case "shieldRatePercent": this.shieldRatePercent = value; break;
-                case "weaponPAtk": this.weaponPAtk = value; break;
-                case "weaponMAtk": this.weaponMAtk = value; break;
-                case "hitBonusFlat": this.hitBonusFlat = value; break;
-                case "fleeBonusFlat": this.fleeBonusFlat = value; break;
-                case "baseMSPD": this.baseMSPD = 0.1 + value; break; // Add bonus to default baseMSPD (0.1)
-                default:
-                    plugin.getLogger().warning("Unknown item bonus key: " + key);
-                    break;
-            }
-        }
-        calculateMaxSP(); // Recalculate MaxSP based on new MaxSPPercent/INT
     }
 
     // --- Getters for New Fields ---
@@ -255,10 +161,10 @@ public class PlayerData {
     // Formula A.1 (Max HP) - Corrected
     public double getMaxHP() {
         int vit = getStat("VIT") + getPendingStat("VIT"); // Base Stat + Pending Stat
+        int baseLevel = getBaseLevel();
 
         // MaxHP = (BaseHP + BaseHP × VIT × 0.01) × (1 + MaxHP% / 100)
-        // MaxHP% comes from items now
-        int baseLevel = getBaseLevel();
+        // Assume BaseHP = 18 + baseLevel * 2.0
         double baseHealth = 18 + (baseLevel * 2.0);
         double vitMultiplier = 1.0 + (vit * 0.01);
 
@@ -272,7 +178,7 @@ public class PlayerData {
         int baseLevel = getBaseLevel();
 
         // MaxSP = (BaseSP + BaseSP × INT × 0.01) × (1 + MaxSP% / 100)
-        // MaxSP% comes from items now
+        // Assume BaseSP = 20 + baseLevel * 3.0
         double baseSP = 20.0 + (baseLevel * 3.0);
         double intMultiplier = 1.0 + (intel * 0.01);
 
@@ -286,7 +192,6 @@ public class PlayerData {
         int vit = getStat("VIT");
         double baseHPRecovery = 1.0; // Assume BaseHPRecovery = 1.0
 
-        // HealingReceivedPercent comes from items now
         double baseRegen = baseHPRecovery + (vit * 0.2);
         return baseRegen * (1 + getHealingReceivedPercent() / 100.0);
     }
@@ -301,7 +206,6 @@ public class PlayerData {
             double baseRegen = 1.0;
             double intelBonus = intel / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0);
 
-            // HealingReceivedPercent comes from items now
             double regen = baseRegen + intelBonus; // Removed maxSpBonus
             regen *= (1 + getHealingReceivedPercent() / 100.0); // Apply HealingReceive%
 
@@ -379,7 +283,6 @@ public class PlayerData {
         Player player = Bukkit.getPlayer(playerUUID);
         if (player != null) {
             plugin.getManaManager().updateBaseExpBar(player);
-            plugin.updateAllStats(player); // Call centralized update to recalculate MaxHP/MaxSP/Derived stats on level up
         }
 
         calculateMaxSP();

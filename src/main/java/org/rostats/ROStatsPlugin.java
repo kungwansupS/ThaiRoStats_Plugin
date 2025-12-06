@@ -10,17 +10,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryType.SlotType; // MODIFIED: Import SlotType directly to resolve OFFHAND symbol
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.rostats.command.AdminCommand;
 import org.rostats.command.PlayerCommand;
 import org.rostats.data.DataManager;
 import org.rostats.data.StatManager;
-import org.rostats.data.ItemBonusService;
-import org.rostats.data.PlayerData;
 import org.rostats.gui.GUIListener;
 import org.rostats.handler.AttributeHandler;
 import org.rostats.handler.CombatHandler;
@@ -36,7 +31,6 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
     private CombatHandler combatHandler;
     private ManaManager manaManager;
     private DataManager dataManager;
-    private ItemBonusService itemBonusService;
 
     @Override
     public void onEnable() {
@@ -47,7 +41,6 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         this.statManager = new StatManager(this);
         this.dataManager = new DataManager(this);
         this.manaManager = new ManaManager(this);
-        this.itemBonusService = new ItemBonusService(this);
         this.attributeHandler = new AttributeHandler(this);
         this.combatHandler = new CombatHandler(this);
 
@@ -107,47 +100,6 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         dataManager.savePlayerData(event.getPlayer());
     }
-
-    /**
-     * NEW: Centralized method to update player stats, including item bonuses.
-     * This method ensures item bonuses are calculated and applied before Bukkit attributes are set.
-     * @param player The player to update.
-     */
-    public void updateAllStats(Player player) {
-        // FIX: Get PlayerData from StatManager, not DataManager.
-        PlayerData data = getStatManager().getData(player.getUniqueId());
-
-        // 1. Calculate and Apply Item Bonuses to PlayerData fields
-        data.applyBonuses(itemBonusService.getCombinedItemBonuses(player));
-
-        // 2. Update Vanilla Attributes (MaxHP/SPD/ASPD/ARMOR)
-        attributeHandler.updatePlayerStats(player);
-
-        // 3. Update Visuals (SP/EXP Bars - uses current stats)
-        manaManager.updateBar(player);
-    }
-
-    /**
-     * NEW: Trigger stat update when player equips/unequips gear.
-     */
-    @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player player)) return;
-
-        // Check if the click potentially involves an equipment slot (Armor, Offhand, Main Hand)
-        // MODIFIED: Uses the shorter SlotType.OFFHAND due to the explicit import above.
-        boolean isEquipmentSlot = event.getSlotType().equals(SlotType.ARMOR)
-                || event.getSlotType().equals(SlotType.OFFHAND)
-                || event.getSlot() == player.getInventory().getHeldItemSlot() // Main Hand
-                || event.isShiftClick(); // Shift-clicks often move items to/from equipment slots
-
-        if (isEquipmentSlot) {
-            // Delay the update by 1 tick to ensure the item transfer/swap is complete
-            // This is crucial for accurately reading the final equipped item's PDC.
-            Bukkit.getScheduler().runTaskLater(this, () -> updateAllStats(player), 1L);
-        }
-    }
-
 
     // MODIFIED: Helper method for Floating Text (Hologram) with animation and offset (For EXP/Level Up Stacking)
     public void showFloatingText(UUID playerUUID, String text, double verticalOffset) {
@@ -240,5 +192,4 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
     public ManaManager getManaManager() { return manaManager; }
     public AttributeHandler getAttributeHandler() { return attributeHandler; }
     public DataManager getDataManager() { return dataManager; }
-    public ItemBonusService getItemBonusService() { return itemBonusService; } // NEW Getter
 }
