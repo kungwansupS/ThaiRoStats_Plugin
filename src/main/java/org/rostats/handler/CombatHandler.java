@@ -13,6 +13,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.scheduler.BukkitTask;
 import org.rostats.ROStatsPlugin;
 import org.rostats.data.PlayerData;
 import org.rostats.data.StatManager;
@@ -28,10 +30,56 @@ public class CombatHandler implements Listener {
     private final double SKILL_POWER = 1.0; // Default skill power for basic attacks
     private final double BASE_CRIT = 1.5; // Keeping old BASE_CRIT as constant, but unused in new formula
     private final int K_DEFENSE = 400; // Constant K for defense formula (Section G)
+    private final double JOB_EXP_RATIO; // New field
 
     public CombatHandler(ROStatsPlugin plugin) {
         this.plugin = plugin;
+        this.JOB_EXP_RATIO = plugin.getConfig().getDouble("exp-formula.job-exp-ratio", 0.75); // Initialize ratio
     }
+
+    // --- EXP Gain Logic (EntityDeathEvent) ---
+    @EventHandler
+    public void onEntityDeath(EntityDeathEvent event) {
+        if (!(event.getEntity().getKiller() instanceof Player killer)) return;
+        LivingEntity victim = event.getEntity();
+        PlayerData data = plugin.getStatManager().getData(killer.getUniqueId());
+
+        // 1. Read vanilla EXP (RawBaseEXP)
+        int rawBaseExp = event.getDroppedExp();
+
+        // 2. Anti-Exploit Rule: Disable XP Orb Drop
+        event.setDroppedExp(0);
+        // event.getDrops().clear(); // Optional for custom item drops
+
+        // 3. Anti-Exploit Rule: Skip if victim is player or no exp is dropped
+        if (victim instanceof Player) return;
+        if (rawBaseExp <= 0) return; // Skip if no exp is dropped
+
+        // 4. Calculate RawJobEXP
+        long rawJobExp = (long) Math.floor(rawBaseExp * JOB_EXP_RATIO);
+        long finalBaseExp = rawBaseExp;
+        long finalJobExp = rawJobExp;
+
+        // 5. Apply Level Gap Penalty (Skipped, requires external monster level data)
+        double penaltyFactor = 1.0;
+
+        // 6. Apply EXP Bonuses (Skipped complex party/damage bonus logic for now)
+        double totalBonusMultiplier = 1.0;
+
+        finalBaseExp = (long) Math.floor(finalBaseExp * penaltyFactor * totalBonusMultiplier);
+        finalJobExp = (long) Math.floor(finalJobExp * penaltyFactor * totalBonusMultiplier);
+
+
+        // 7. Add EXP directly to player fields (PlayerData handles level-up loop and floating text)
+        // Since both calls might result in floating text, they will use the new stacking logic in PlayerData.
+        if (finalBaseExp > 0) {
+            data.addBaseExp(finalBaseExp, killer.getUniqueId());
+        }
+        if (finalJobExp > 0) {
+            data.addJobExp(finalJobExp, killer.getUniqueId());
+        }
+    }
+    // --- END EXP LOGIC ---
 
     @EventHandler
     public void onCombat(EntityDamageByEntityEvent event) {
@@ -81,13 +129,12 @@ public class CombatHandler implements Listener {
         // 1. HIT check (Hit vs Flee)
         if (!isMagic) {
             int attackerHit = stats.getHit(attackerPlayer);
-            // FIX: Set default mob Flee to 0 as requested
-            int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 0;
+            // MODIFIED: Defender Flee defaults to 0 if not a player
+            int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 0; // CHANGED 10 to 0
 
-            // Formula: ChanceToHit = clamp(Hit / (Hit + TargetFLEE), 5%, 100%)
+            // Formula: ChanceToHit = clamp(Hit / (Hit + TargetFLEE), 5%, 95%)
             double hitRate = (double) attackerHit / (attackerHit + defenderFlee);
-            // FIX: Changed upper cap from 0.95 to 1.0 to allow 100% hit chance when mob Flee is 0.
-            hitRate = Math.max(0.05, Math.min(1.0, hitRate));
+            hitRate = Math.max(0.05, Math.min(0.95, hitRate));
 
             if (random.nextDouble() > hitRate) {
                 event.setCancelled(true);
@@ -186,7 +233,6 @@ public class CombatHandler implements Listener {
         }
 
         // 11. Apply Final/True DMG (Keeping original Final DMG steps from existing code)
-        double trueDamage = 0.0;
         if (D != null) {
             // Final DMG%
             damageTaken *= (1 + A.getFinalDmgPercent() / 100.0);
@@ -200,9 +246,6 @@ public class CombatHandler implements Listener {
 
             // Final DMG RES%
             damageTaken *= (1 - D.getFinalDmgResPercent() / 100.0);
-
-            // True Damage (Flat value is extracted)
-            trueDamage = A.getTrueDamageFlat();
         }
 
         // 12. Apply Shield absorption (Section J)
@@ -216,25 +259,18 @@ public class CombatHandler implements Listener {
         double finalDamage = Math.max(1.0, damageTaken);
         event.setDamage(finalDamage);
 
-        // --- FCT Display ---
-        if (attackerPlayer != null) {
-            showDamageText(defenderEntity, finalDamage, isCritical, trueDamage);
-        }
-
         if (isCritical && attackerPlayer != null) {
-            showCritVisuals(attackerPlayer, defenderEntity);
+            showCritEffects(attackerPlayer, defenderEntity, finalDamage);
         }
-        // --- END FCT Display ---
     }
 
     // ==========================================
     // COMBAT HELPER METHODS
     // ==========================================
 
-    // Section G: Defense Pipeline - Corrected
     private double applyPhysicalDEF(PlayerData A, PlayerData D, double damage, Player defenderPlayer) {
         StatManager stats = plugin.getStatManager();
-        double softPDef = stats.getSoftDef(defenderPlayer); // SoftPDEF = VIT × 0.5 + AGI × 0.2
+        double softPDef = stats.getSoftDef(defenderPlayer);
 
         // EffectivePDEF = max(0, (SoftPDEF - IgnorePDEF_flat) × (1 - IgnorePDEF% / 100))
         double def1 = Math.max(0, softPDef - A.getIgnorePDefFlat());
@@ -249,9 +285,9 @@ public class CombatHandler implements Listener {
 
     private double applyMagicDEF(PlayerData A, PlayerData D, double damage, Player defenderPlayer) {
         StatManager stats = plugin.getStatManager();
-        double softMDef = stats.getSoftMDef(defenderPlayer); // SoftMDEF = INT × 1 + VIT × 0.2
+        double softMDef = stats.getSoftMDef(defenderPlayer);
 
-        // EffectiveMDEF = max(0, (SoftMDEF - IgnoreMDEF_flat) × (1 - IgnoreMDEF% / 100))
+        // EffectiveMDEF = max(0, (SoftMDef - IgnoreMDEF_flat) × (1 - IgnoreMDEF% / 100))
         double def1 = Math.max(0, softMDef - A.getIgnoreMDefFlat());
         double effectiveMDef = def1 * (1 - A.getIgnoreMDefPercent() / 100.0);
 
@@ -261,7 +297,6 @@ public class CombatHandler implements Listener {
         return damage * (1 - mDefReduction);
     }
 
-    // Section 7: RAW Difference Tier Multiplier - NEW
     private double getTierMultiplier(double diff) {
         if (diff >= 4000) return 1.55;
         if (diff >= 3000) return 1.50;
@@ -276,7 +311,6 @@ public class CombatHandler implements Listener {
         return 1.00;
     }
 
-    // Section F: Critical Chance - Corrected
     private double calculateCritChance(PlayerData A, PlayerData D) {
         // CriticalChance = max(0, CRIT - Target.CRIT_RES)
         int luk = A.getStat("LUK"); // Get LUK stat from PlayerData A
@@ -291,50 +325,20 @@ public class CombatHandler implements Listener {
         return effectiveCritValue / 100.0;
     }
 
-    // Section F: Critical Multiplier - Corrected
     private double calculateCritMultiplier(PlayerData A, PlayerData D) {
         // CritMultiplier = 1 + (CritDMG% / 100)
         double bonusCrit = A.getCritDmgPercent() / 100.0;
-
-        // Note: CritDMGRes% application is missing here, but the spec says:
-        // FinalDamage = max(NormalDamage, CritDamage × (1 - CRIT_DMG_RES%/100))
-        // We will apply this reduction outside this method in onCombat (Step 9).
         return 1.0 + bonusCrit;
     }
 
-    // --- NEW: FCT Text Handler ---
-    private void showDamageText(LivingEntity victim, double finalDamage, boolean isCritical, double trueDamage) {
-        Location loc = victim.getLocation().add(0, 1.5, 0);
-
-        // 1. True Damage (always display first as separate text)
-        if (trueDamage >= 1.0) {
-            // Apply slight random offset for true damage text
-            showFloatingText(loc.clone().add(random.nextDouble() * 0.5 - 0.25, 0.2, random.nextDouble() * 0.5 - 0.25),
-                    "§6" + String.format("%.0f", trueDamage) + "✦"); // FCT Rule: True Damage
-        }
-
-        // 2. Primary Damage (Normal/Critical)
-        String damageText;
-        if (isCritical) {
-            damageText = "§c" + String.format("%.0f", finalDamage) + "!"; // FCT Rule: Critical Damage
-        } else {
-            damageText = "§f" + String.format("%.0f", finalDamage); // FCT Rule: Normal Damage
-        }
-
-        // Show Primary Damage
-        showFloatingText(loc, damageText);
-    }
-
-    // Helper for visual effects (Refactored from showCritEffects)
-    private void showCritVisuals(Player attacker, LivingEntity victim) {
+    // MODIFIED: Helper for visual effects (Uses animation logic via showFloatingText)
+    private void showCritEffects(Player attacker, LivingEntity victim, double finalDamage) {
+        showFloatingText(victim.getLocation().add(0, 2, 0), "§c§lCRITICAL " + String.format("%.0f", finalDamage));
         attacker.playSound(attacker.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1f, 1f);
         attacker.getWorld().spawnParticle(Particle.CRIT, victim.getLocation().add(0, 1, 0), 20);
-
-        // Title logic
-        Title.Times times = Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(500), Duration.ofMillis(200));
-        attacker.showTitle(Title.title(Component.text(""), Component.text("§cCRITICAL!"), times));
     }
 
+    // MODIFIED: Floating Text for Combat (MISS/CRITICAL) with animation
     private void showFloatingText(Location loc, String text) {
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             org.bukkit.entity.ArmorStand stand = loc.getWorld().spawn(loc, org.bukkit.entity.ArmorStand.class);
@@ -344,7 +348,27 @@ public class CombatHandler implements Listener {
             stand.setCustomName(text);
             stand.setCustomNameVisible(true);
             stand.setSmall(true);
-            plugin.getServer().getScheduler().runTaskLater(plugin, stand::remove, 20L);
+
+            // Animation Task: Move upwards constantly for 1 second (20 ticks)
+            BukkitTask[] task = new BukkitTask[1];
+            task[0] = plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
+                private int ticks = 0;
+                private final Location currentLocation = stand.getLocation();
+                private final double distance = 0.5; // Total distance to move up
+                private final double step = distance / 20.0; // Distance per tick (over 20 ticks)
+
+                @Override
+                public void run() {
+                    if (stand.isDead() || ticks >= 20) {
+                        stand.remove();
+                        if (task[0] != null) task[0].cancel();
+                        return;
+                    }
+                    currentLocation.add(0, step, 0); // Move up
+                    stand.teleport(currentLocation);
+                    ticks++;
+                }
+            }, 0L, 1L);
         });
     }
 }

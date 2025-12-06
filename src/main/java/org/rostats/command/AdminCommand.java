@@ -61,15 +61,21 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         switch (sub) {
             case "check":
                 sender.sendMessage("§6--- " + target.getName() + " ---");
-                sender.sendMessage("§eLv: " + data.getBaseLevel());
+                sender.sendMessage("§eBase Lv: " + data.getBaseLevel());
+                sender.sendMessage("§eJob Lv: " + data.getJobLevel());
                 break;
 
-            case "levelup": // /roadmin levelup <player> <exp>
+            case "levelup": // /roadmin levelup <player> <base_exp> [job_exp]
                 if (args.length < 3) return true;
                 try {
-                    // UPDATE: Changed addBaseExp signature
-                    data.addBaseExp(Long.parseLong(args[2]), target.getUniqueId());
-                    sender.sendMessage("§aAdded EXP.");
+                    long baseExp = Long.parseLong(args[2]);
+                    // If job_exp is not provided, calculate it using the ratio
+                    long jobExp = (args.length > 3) ? Long.parseLong(args[3]) : (long) (baseExp * plugin.getConfig().getDouble("exp-formula.job-exp-ratio", 0.75));
+
+                    data.addBaseExp(baseExp, target.getUniqueId());
+                    data.addJobExp(jobExp, target.getUniqueId());
+
+                    sender.sendMessage("§aAdded EXP (Base: " + baseExp + ", Job: " + jobExp + ").");
                     update(target);
                 } catch (NumberFormatException e) {
                     sender.sendMessage("§cInvalid EXP value!");
@@ -84,6 +90,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
                     if (key.equals("points")) data.setStatPoints(val);
                     else if (key.equals("baselevel")) data.setBaseLevel(val);
+                    else if (key.equals("joblevel")) data.setJobLevel(val); // NEW: set joblevel
                     else plugin.getStatManager().setStat(target.getUniqueId(), key.toUpperCase(), val);
 
                     sender.sendMessage("§aValue set.");
@@ -120,7 +127,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender s) {
         s.sendMessage("§c/roadmin save");
-        s.sendMessage("§c/roadmin levelup <player> <EXP>");
+        s.sendMessage("§c/roadmin levelup <player> <BaseEXP> [JobEXP]"); // UPDATED help
         s.sendMessage("§c/roadmin set <player> <STAT> <VAL>");
         s.sendMessage("§c/roadmin fullheal <player>");
     }
@@ -134,7 +141,7 @@ public class AdminCommand implements CommandExecutor, TabCompleter {
         }
         else if (args.length == 3) {
             if (args[0].equalsIgnoreCase("set")) {
-                completions.addAll(Arrays.asList("STR", "AGI", "VIT", "INT", "DEX", "LUK", "Points", "BaseLevel"));
+                completions.addAll(Arrays.asList("STR", "AGI", "VIT", "INT", "DEX", "LUK", "Points", "BaseLevel", "JobLevel")); // NEW: JobLevel
             }
         }
 

@@ -11,13 +11,14 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 import org.rostats.command.AdminCommand;
 import org.rostats.command.PlayerCommand;
 import org.rostats.data.DataManager;
 import org.rostats.data.StatManager;
 import org.rostats.gui.GUIListener;
 import org.rostats.handler.AttributeHandler;
-import org.rostats.handler.CombatHandler; // Import ถูกต้อง
+import org.rostats.handler.CombatHandler;
 import org.rostats.handler.ManaManager;
 import org.rostats.hook.PAPIHook;
 
@@ -41,11 +42,11 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         this.dataManager = new DataManager(this);
         this.manaManager = new ManaManager(this);
         this.attributeHandler = new AttributeHandler(this);
-        this.combatHandler = new CombatHandler(this); // Instantiation ถูกต้อง
+        this.combatHandler = new CombatHandler(this);
 
         // 2. Register Events
         getServer().getPluginManager().registerEvents(attributeHandler, this);
-        getServer().getPluginManager().registerEvents(combatHandler, this); // Registration ถูกต้อง
+        getServer().getPluginManager().registerEvents(combatHandler, this);
         getServer().getPluginManager().registerEvents(manaManager, this);
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);
@@ -100,26 +101,50 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         dataManager.savePlayerData(event.getPlayer());
     }
 
-    // NEW: Helper method for Floating Text (Hologram)
-    public void showFloatingText(UUID playerUUID, String text) {
+    // MODIFIED: Helper method for Floating Text (Hologram) with animation and offset
+    public void showFloatingText(UUID playerUUID, String text, double verticalOffset) {
         Player player = Bukkit.getPlayer(playerUUID);
         if (player == null || !player.isOnline()) return;
 
-        Location loc = player.getLocation().add(0, 2.5, 0); // Position above the player
+        // Start location: 2.0 blocks above head + offset
+        Location startLoc = player.getLocation().add(0, 2.0 + verticalOffset, 0);
 
         getServer().getScheduler().runTask(this, () -> {
-            ArmorStand stand = loc.getWorld().spawn(loc, ArmorStand.class);
+            ArmorStand stand = startLoc.getWorld().spawn(startLoc, ArmorStand.class);
             stand.setVisible(false);
             stand.setGravity(false);
             stand.setMarker(true);
             stand.setCustomNameVisible(true);
             stand.customName(Component.text(text));
+            stand.setSmall(true);
 
-            // Make it float upwards and remove after 2 seconds
-            getServer().getScheduler().runTaskLater(this, () -> {
-                stand.remove();
-            }, 40L); // 2 seconds * 20 ticks/sec
+            // Animation Task: Move upwards constantly for 1 second (20 ticks)
+            BukkitTask[] task = new BukkitTask[1];
+            task[0] = getServer().getScheduler().runTaskTimer(this, new Runnable() {
+                private int ticks = 0;
+                private final Location currentLocation = stand.getLocation();
+                private final double distance = 0.5; // Total distance to move up
+                private final double step = distance / 20.0; // Distance per tick (over 20 ticks)
+
+                @Override
+                public void run() {
+                    if (stand.isDead() || ticks >= 20) {
+                        stand.remove();
+                        if (task[0] != null) task[0].cancel();
+                        return;
+                    }
+                    currentLocation.add(0, step, 0); // Move up
+                    stand.teleport(currentLocation);
+                    ticks++;
+                }
+            }, 0L, 1L);
         });
+    }
+
+    // Keep the old signature for compatibility, delegating to the new one with a medium offset
+    public void showFloatingText(UUID playerUUID, String text) {
+        // Use a medium offset (0.25) for single calls that don't need stacking context
+        showFloatingText(playerUUID, text, 0.25);
     }
 
     public StatManager getStatManager() { return statManager; }

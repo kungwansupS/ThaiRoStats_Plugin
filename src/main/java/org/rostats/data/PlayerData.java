@@ -9,7 +9,10 @@ import java.util.Set;
 public class PlayerData {
     private int baseLevel = 1;
     private long baseExp = 0;
+    private int jobLevel = 1;
+    private long jobExp = 0;
     private int statPoints = 0;
+    private int skillPoints = 0;
     private double currentSP = 20;
     private int resetCount = 0;
 
@@ -135,6 +138,15 @@ public class PlayerData {
     public double getFleeBonusFlat() { return fleeBonusFlat; }
     public double getBaseMSPD() { return baseMSPD; }
 
+    // NEW Getters/Setters for Job Level/Exp/Points
+    public int getJobLevel() { return jobLevel; }
+    public void setJobLevel(int jobLevel) { this.jobLevel = jobLevel; }
+    public long getJobExp() { return jobExp; }
+    public void setJobExp(long jobExp) { this.jobExp = jobExp; }
+    public int getSkillPoints() { return skillPoints; }
+    public void setSkillPoints(int skillPoints) { this.skillPoints = skillPoints; }
+
+
     // --- Core Methods (Modified) ---
     public int getStat(String key) { return stats.getOrDefault(key.toUpperCase(), 1); }
     public void setStat(String key, int val) { stats.put(key.toUpperCase(), val); calculateMaxSP(); }
@@ -165,7 +177,7 @@ public class PlayerData {
 
         // MaxSP = (BaseSP + BaseSP × INT × 0.01) × (1 + MaxSP% / 100)
         // Assume BaseSP = 20 + baseLevel * 3
-        double baseSP = 17.0 + (baseLevel * 3.0);
+        double baseSP = 20.0 + (baseLevel * 3.0);
         double intMultiplier = 1.0 + (intel * 0.01);
 
         double finalMaxSP = baseSP * intMultiplier;
@@ -211,25 +223,62 @@ public class PlayerData {
     public int getResetCount() { return resetCount; }
     public void setResetCount(int count) { this.resetCount = count; }
     public void incrementResetCount() { this.resetCount++; }
+
+    // MODIFIED: Base EXP gain logic (Uses higher offset 0.5 for stacking)
     public void addBaseExp(long amount, UUID playerUUID) {
-        // FCT calls for EXP on kill and Job EXP on level-up are removed from here.
-        // The EXP on kill FCT is now handled in DeathHandler.
+        long expGained = amount;
+        plugin.showFloatingText(playerUUID, "§b+" + expGained + " Base EXP", 0.5); // Offset 0.5 (Higher)
 
         this.baseExp += amount;
-
-        while (this.baseExp >= getExpReq(this.baseLevel)) {
-            this.baseExp -= getExpReq(this.baseLevel);
+        while (this.baseExp >= getBaseExpReq(this.baseLevel)) { // Use getBaseExpReq
+            this.baseExp -= getBaseExpReq(this.baseLevel);
             this.baseLevel++;
             this.statPoints += getStatPointsGain(this.baseLevel);
-            // FCT for Job EXP on level-up is removed as it was incorrect.
+            // Floating text for Level Up (Base above Job)
+            plugin.showFloatingText(playerUUID, "§6LEVEL UP! §fLv " + this.baseLevel, 0.5); // Offset 0.5 (Higher)
         }
         calculateMaxSP();
     }
+
+    // MODIFIED: Job EXP gain logic (Uses lower offset 0.0 for stacking)
+    public void addJobExp(long amount, UUID playerUUID) {
+        long expGained = amount;
+        plugin.showFloatingText(playerUUID, "§e+" + expGained + " Job EXP", 0.0); // Offset 0.0 (Lower)
+
+        this.jobExp += amount;
+        while (this.jobExp >= getJobExpReq(this.jobLevel)) {
+            this.jobExp -= getJobExpReq(this.jobLevel);
+            this.jobLevel++;
+            this.skillPoints += 1; // Assume 1 Skill Point per Job Level for now
+            // Floating text for Job Level Up (Job below Base)
+            plugin.showFloatingText(playerUUID, "§eJOB LEVEL UP! §fJob Lv " + this.jobLevel, 0.0); // Offset 0.0 (Lower)
+        }
+    }
+
     public long getBaseExp() { return baseExp; }
-    public long getBaseExpReq() { return getExpReq(baseLevel); }
-    public long getJobExp() { return 0; }
-    public long getJobExpReq() { return 1000; }
-    public int getJobLevel() { return 1; }
-    private long getExpReq(int level) { int multiplier = plugin.getConfig().getInt("exp-formula.base-exp-multiplier", 10); return (long) (Math.pow(level, 3) * multiplier); }
-    private int getStatPointsGain(int level) { int threshold = plugin.getConfig().getInt("stat-points-gain.level-50-threshold", 50); int low = plugin.getConfig().getInt("stat-points-gain.points-low-level", 5); int high = plugin.getConfig().getInt("stat-points-gain.points-high-level", 8); return (level <= threshold) ? low : high; }
+    public void setBaseExp(long baseExp) { this.baseExp = baseExp; }
+    public long getBaseExpReq() { return getBaseExpReq(baseLevel); }
+    public long getJobExpReq() { return getJobExpReq(jobLevel); }
+
+    // MODIFIED: Base Exp Req (uses cubic formula with Base multiplier)
+    private long getBaseExpReq(int level) {
+        int multiplier = plugin.getConfig().getInt("exp-formula.base-exp-multiplier", 10);
+        // Using cubic formula from config as per existing implementation
+        return (long) (Math.pow(level, 3) * multiplier);
+    }
+
+    // NEW: Job Exp Req (uses cubic formula with Job multiplier)
+    private long getJobExpReq(int level) {
+        int multiplier = plugin.getConfig().getInt("exp-formula.job-exp-multiplier", 8);
+        // Using cubic formula from config as per existing implementation
+        return (long) (Math.pow(level, 3) * multiplier);
+    }
+
+    // Renamed for clarity, kept functionality for compatibility
+    private int getStatPointsGain(int level) {
+        int threshold = plugin.getConfig().getInt("stat-points-gain.level-50-threshold", 50);
+        int low = plugin.getConfig().getInt("stat-points-gain.points-low-level", 5);
+        int high = plugin.getConfig().getInt("stat-points-gain.points-high-level", 8);
+        return (level <= threshold) ? low : high;
+    }
 }

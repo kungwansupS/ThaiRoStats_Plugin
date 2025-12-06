@@ -100,6 +100,7 @@ public class CharacterGUI {
         double maxHP = player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
         double currentHP = player.getHealth();
         int baseLevel = data.getBaseLevel();
+        int jobLevel = data.getJobLevel();
         double power = stats.calculatePower(player);
         double maxPower = 5000;
 
@@ -112,7 +113,7 @@ public class CharacterGUI {
         lore.add(createBar(data.getCurrentSP(), data.getMaxSP(), "SP"));
         lore.add("§9Base Lv§a" + baseLevel + " §8(" + data.getBaseExp() + "/" + data.getBaseExpReq() + ")");
         lore.add(createBar(data.getBaseExp(), data.getBaseExpReq(), "BASE_LV"));
-        lore.add("§eJob Lv§a" + data.getJobLevel() + " §8(" + data.getJobExp() + "/" + data.getJobExpReq() + ")");
+        lore.add("§eJob Lv§a" + jobLevel + " §8(" + data.getJobExp() + "/" + data.getJobExpReq() + ")");
         lore.add(createBar(data.getJobExp(), data.getJobExpReq(), "JOB_LV"));
         lore.add("§cStamina: §a100/100");
         lore.add(createBar(100.0, 100.0, "STAMINA"));

@@ -6,6 +6,7 @@ org\rostats\data\DataManager.class
 org\rostats\gui\MainMenu.class
 org\rostats\handler\AttributeHandler.class
 org\rostats\command\PlayerCommand.class
+org\rostats\ROStatsPlugin$1.class
 org\rostats\handler\CombatHandler.class
 org\rostats\command\AdminCommand.class
 org\rostats\gui\CharacterGUI.class
@@ -14,3 +15,4 @@ org\rostats\gui\StatusMenu.class
 org\rostats\hook\PAPIHook.class
 org\rostats\handler\ManaManager.class
 org\rostats\data\PlayerData.class
+org\rostats\handler\CombatHandler$1.class

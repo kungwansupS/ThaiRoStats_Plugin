@@ -34,6 +34,12 @@ public class PAPIHook extends PlaceholderExpansion {
 
         return switch (params.toLowerCase()) {
             case "baselevel" -> String.valueOf(data.getBaseLevel());
+            case "baseexp" -> String.valueOf(data.getBaseExp()); // NEW
+            case "baseexpreq" -> String.valueOf(data.getBaseExpReq()); // NEW
+            case "joblevel" -> String.valueOf(data.getJobLevel()); // NEW
+            case "jobexp" -> String.valueOf(data.getJobExp()); // NEW
+            case "jobexpreq" -> String.valueOf(data.getJobExpReq()); // NEW
+            case "skillpoints" -> String.valueOf(data.getSkillPoints()); // NEW
             case "statpoints" -> String.valueOf(data.getStatPoints());
 
             // HP/SP Values

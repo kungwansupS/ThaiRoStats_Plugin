@@ -32,7 +32,11 @@ public class DataManager {
         if (file.exists()) {
             YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
             data.setBaseLevel(config.getInt("base-level", 1));
+            data.setBaseExp(config.getLong("base-exp", 0)); // NEW: Load Base EXP
+            data.setJobLevel(config.getInt("job-level", 1)); // NEW: Load Job Level
+            data.setJobExp(config.getLong("job-exp", 0)); // NEW: Load Job EXP
             data.setStatPoints(config.getInt("points", 0));
+            data.setSkillPoints(config.getInt("skill-points", 0)); // NEW: Load Skill Points
             data.setResetCount(config.getInt("reset-count", 0));
 
             // Stats Load...
@@ -67,7 +71,11 @@ public class DataManager {
 
         config.set("name", player.getName());
         config.set("base-level", data.getBaseLevel());
+        config.set("base-exp", data.getBaseExp()); // NEW: Save Base EXP
+        config.set("job-level", data.getJobLevel()); // NEW: Save Job Level
+        config.set("job-exp", data.getJobExp()); // NEW: Save Job EXP
         config.set("points", data.getStatPoints());
+        config.set("skill-points", data.getSkillPoints()); // NEW: Save Skill Points
         config.set("reset-count", data.getResetCount());
         config.set("current-sp", data.getCurrentSP());
 

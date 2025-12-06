@@ -10,7 +10,9 @@ stat-cost:
 
 # --- Experience & Points ---
 exp-formula:
-  base-exp-multiplier: 10 # EXP ที่ต้องการ = (Level^3) * Multiplier
+  job-exp-ratio: 0.75 # RawJobEXP = RawBaseEXP * Ratio
+  base-exp-multiplier: 10 # EXP ที่ต้องการ = (Level^3) * Multiplier (For Base)
+  job-exp-multiplier: 8 # EXP ที่ต้องการ = (Level^3) * Multiplier (For Job)
 stat-points-gain:
   level-50-threshold: 50
   points-low-level: 5 # Stat Points ที่ได้รับต่อเลเวล (เมื่อ Base Level <= 50)
