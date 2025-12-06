@@ -31,9 +31,9 @@ public class ManaManager implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        createBar(player); // SP
-        createBaseExpBar(player); // Base EXP
-        createJobExpBar(player);  // Job EXP
+        createBar(player); // SP (calls updateBar internally)
+        createBaseExpBar(player); // Base EXP (removed internal update)
+        createJobExpBar(player);  // Job EXP (removed internal update)
     }
 
     @EventHandler
@@ -80,7 +80,7 @@ public class ManaManager implements Listener {
         BossBar bar = Bukkit.createBossBar("Base EXP", BarColor.GREEN, BarStyle.SOLID);
         bar.addPlayer(player);
         playerBaseExpBars.put(player.getUniqueId(), bar);
-        updateBaseExpBar(player);
+        // updateBaseExpBar(player); // **ลบการเรียกใช้งานนี้ออก**
     }
 
     public void removeBaseExpBar(Player player) {
@@ -126,7 +126,7 @@ public class ManaManager implements Listener {
         BossBar bar = Bukkit.createBossBar("Job EXP", BarColor.YELLOW, BarStyle.SOLID);
         bar.addPlayer(player);
         playerJobExpBars.put(player.getUniqueId(), bar);
-        updateJobExpBar(player);
+        // updateJobExpBar(player); // **ลบการเรียกใช้งานนี้ออก**
     }
 
     public void removeJobExpBar(Player player) {

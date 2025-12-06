@@ -60,6 +60,8 @@ public class DataManager {
         }
         plugin.getAttributeHandler().updatePlayerStats(player);
         plugin.getManaManager().updateBar(player);
+        plugin.getManaManager().updateBaseExpBar(player); // **เพิ่มการอัปเดต Base EXP Bar**
+        plugin.getManaManager().updateJobExpBar(player);  // **เพิ่มการอัปเดต Job EXP Bar**
     }
 
     public void savePlayerData(Player player) {
