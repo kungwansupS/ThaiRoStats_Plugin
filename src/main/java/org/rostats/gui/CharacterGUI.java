@@ -124,15 +124,16 @@ public class CharacterGUI {
         return lore.toArray(new String[0]);
     }
 
-    // 2. General Attribute Lore (Section 1) - Corrected
+    // 2. General Attribute Lore (Section 1) - Corrected for format
     private String[] getGeneralLore(Player player, PlayerData data) {
         StatManager stats = plugin.getStatManager();
         double maxHP = player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
         double currentHP = player.getHealth();
-        // SP Recovery = (BaseSPRecovery + INT × small_bonus) * (1 + HealingReceive% / 100)
-        double currentSPRegen = 1 + (data.getStat("INT") / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0));
-        currentSPRegen *= (1 + data.getHealingReceivedPercent() / 100.0); // Apply HealingReceive%
-        // HP Recovery = (BaseHPRecovery + VIT × 0.2) * (1 + HealingReceive% / 100)
+        // SP Recovery calculation (from PlayerData.regenSP logic)
+        double regenIntDivisor = plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0);
+        double currentSPRegen = 1 + (data.getStat("INT") / regenIntDivisor);
+        currentSPRegen *= (1 + data.getHealingReceivedPercent() / 100.0);
+        // HP Recovery calculation (from PlayerData.getHPRegen logic)
         double currentHPRegen = data.getHPRegen();
 
         List<String> lore = new ArrayList<>();
@@ -158,9 +159,10 @@ public class CharacterGUI {
         return lore.toArray(new String[0]);
     }
 
-    // 3. Advanced Attribute Lore (Section 2) - Corrected
+    // 3. Advanced Attribute Lore (Section 2) - Corrected for format and suffixes
     private String[] getAdvancedLore(Player player, PlayerData data) {
         StatManager stats = plugin.getStatManager();
+        double totalCritResRaw = (data.getStat("LUK") * 0.2) + data.getCritRes();
 
         List<String> lore = new ArrayList<>();
         lore.add("§7");
@@ -171,10 +173,10 @@ public class CharacterGUI {
         lore.add("§f§l-- Speed / Cast --");
         // ASPD / MSPD
         lore.add(formatTwoColumns("§7ASPD: §a" + String.format("%.0f%%", (stats.getAspdBonus(player) * 100.0)), "§7MSPD: §a" + String.format("%.1f%%", data.getMSpdPercent())));
-        // Variable CT/Casting
-        lore.add(formatTwoColumns("§7Variable CT: §d" + String.format("%.1f", data.getVarCTFlat()), "§7Variable Casting: §d" + String.format("%.1f%%", data.getVarCTPercent())));
-        // Fixed CT/Casting
-        lore.add(formatTwoColumns("§7Fixed CT: §d" + String.format("%.1f", data.getFixedCTFlat()), "§7Fixed Casting: §d" + String.format("%.1f%%", data.getFixedCTPercent())));
+        // Variable CT/Casting (Added 's' suffix to CT fields)
+        lore.add(formatTwoColumns("§7Variable CT: §d" + String.format("%.1f", data.getVarCTFlat()) + "s", "§7Variable Casting: §d" + String.format("%.1f%%", data.getVarCTPercent())));
+        // Fixed CT/Casting (Added 's' suffix to CT fields)
+        lore.add(formatTwoColumns("§7Fixed CT: §d" + String.format("%.1f", data.getFixedCTFlat()) + "s", "§7Fixed Casting: §d" + String.format("%.1f%%", data.getFixedCTPercent())));
         lore.add(" ");
 
         // Healing
@@ -186,7 +188,6 @@ public class CharacterGUI {
         // Critical
         lore.add("§f§l-- Critical --");
         // CRIT / CRIT RES
-        double totalCritResRaw = (data.getStat("LUK") * 0.2) + data.getCritRes();
         lore.add(formatTwoColumns("§7CRIT: §e" + String.format("%.1f", stats.getCritChance(player)), "§7CRIT RES: §e" + String.format("%.1f", totalCritResRaw)));
         // CRIT DMG / CRIT DMG RES
         lore.add(formatTwoColumns("§7CRIT DMG: §c" + String.format("%.1f%%", data.getCritDmgPercent()), "§7CRIT DMG RES: §c" + String.format("%.1f%%", data.getCritDmgResPercent())));
@@ -226,12 +227,12 @@ public class CharacterGUI {
         lore.add(formatTwoColumns("§7P.DMG Bonus+: §e" + String.format("%.0f", data.getPDmgBonusFlat()), "§7M.DMG Bonus+: §e" + String.format("%.0f", data.getMDmgBonusFlat())));
         lore.add(" ");
 
-        // PVE / PVP
-        lore.add("§f§l-- PVE / PVP --");
-        // PVE DMG Bonus/PVP DMG Bonus (PVP bonus is flat here)
-        lore.add(formatTwoColumns("§7PVE DMG Bonus: §a" + String.format("%.0f", data.getPveDmgBonusPercent()), "§7PVP DMG Bonus: §c" + String.format("%.0f", data.getPvpDmgBonusPercent())));
-        // PVE DMG Reduction/PVP DMG Reduction
-        lore.add(formatTwoColumns("§7PVE DMG Reduction: §a" + String.format("%.1f%%", data.getPveDmgReductionPercent()), "§7PVP DMG Reduction: §c" + String.format("%.1f%%", data.getPvpDmgReductionPercent())));
+        // PVE / PVP (RAW Difference Model) (Updated Heading and fields to RAW model)
+        lore.add("§f§l-- PVE / PVP (RAW Difference Model) --");
+        // PVE RAW Bonus/PVP RAW Bonus (Using percentage fields as flat RAW values for display)
+        lore.add(formatTwoColumns("§7PVE RAW Bonus: §a" + String.format("%.0f", data.getPveDmgBonusPercent()), "§7PVP RAW Bonus: §c" + String.format("%.0f", data.getPvpDmgBonusPercent())));
+        // PVE RAW Reduce/PVP RAW Reduce (Using percentage fields as flat RAW values for display)
+        lore.add(formatTwoColumns("§7PVE RAW Reduce: §a" + String.format("%.0f", data.getPveDmgReductionPercent()), "§7PVP RAW Reduce: §c" + String.format("%.0f", data.getPvpDmgReductionPercent())));
 
         lore.add("§7--------------------");
         lore.add("§7คลิกเพื่อเปิดหน้าจอข้อมูลการต่อสู้ขั้นสูง");
@@ -239,7 +240,7 @@ public class CharacterGUI {
         return lore.toArray(new String[0]);
     }
 
-    // 4. Special Attribute Lore (Section 3) - Corrected
+    // 4. Special Attribute Lore (Section 3) - Corrected for format
     private String[] getSpecialLore(Player player, PlayerData data) {
         List<String> lore = new ArrayList<>();
         lore.add("§7");

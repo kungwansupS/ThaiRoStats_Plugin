@@ -151,7 +151,7 @@ public class PlayerData {
 
         // MaxHP = (BaseHP + BaseHP × VIT × 0.01) × (1 + MaxHP% / 100)
         // Assume BaseHP = 100 + baseLevel * 10
-        double baseHealth = 100.0 + (baseLevel * 10.0);
+        double baseHealth = 18 + (baseLevel * 2.0);
         double vitMultiplier = 1.0 + (vit * 0.01);
 
         double finalMaxHealth = baseHealth * vitMultiplier;

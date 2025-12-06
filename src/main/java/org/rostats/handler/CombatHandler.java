@@ -75,10 +75,10 @@ public class CombatHandler implements Listener {
 
 
         // ==========================================
-        // COMBAT PIPELINE (Section B)
+        // COMBAT PIPELINE (Section 8 - Re-implemented)
         // ==========================================
 
-        // 1. HIT check (Hit vs Flee) - Corrected to use new formula
+        // 1. HIT check (Hit vs Flee)
         if (!isMagic) {
             int attackerHit = stats.getHit(attackerPlayer);
             int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 10;
@@ -94,7 +94,7 @@ public class CombatHandler implements Listener {
             }
         }
 
-        // 2. Determine damage type (Skipped: Already determined by isMagic)
+        // 2. Determine base ATK
         double damage = weaponDamage;
         if (isMagic) {
             damage += stats.getMagicAttack(attackerPlayer);
@@ -102,87 +102,62 @@ public class CombatHandler implements Listener {
             damage += stats.getPhysicalAttack(attackerPlayer);
         }
 
-        // 3. Compute BaseDamage (ATK * SkillPower)
-        double baseDamage = damage * SKILL_POWER;
+        // 3. Compute BaseDamage (ATK * SkillPower) -> Result is preDefDamage
+        double preDefDamage = damage * SKILL_POWER;
 
-        // 4. Apply Damage Bonus% (Section C, D)
+        // 4. Apply Damage Bonus % (Section 6)
         if (isMagic) {
-            baseDamage *= (1 + A.getMDmgBonusPercent() / 100.0);
+            preDefDamage *= (1 + A.getMDmgBonusPercent() / 100.0);
         } else {
-            baseDamage *= (1 + A.getPDmgBonusPercent() / 100.0);
+            preDefDamage *= (1 + A.getPDmgBonusPercent() / 100.0);
         }
 
-        // 5. Apply Melee/Range Bonus% (Section C, D)
+        // 5. Apply Melee/Range Bonus% (Section 6)
         if (!isMagic) {
             if (isRanged) {
-                baseDamage *= (1 + A.getRangePDmgPercent() / 100.0);
+                preDefDamage *= (1 + A.getRangePDmgPercent() / 100.0);
             } else { // Melee
-                baseDamage *= (1 + A.getMeleePDmgPercent() / 100.0);
+                preDefDamage *= (1 + A.getMeleePDmgPercent() / 100.0);
             }
         }
 
-        // 6. Apply Flat Damage Bonus (Section C, D)
+        // 6. Add flat bonuses (P/M_DMG_FLAT) (Section 6)
         if (isMagic) {
-            baseDamage += A.getMDmgBonusFlat();
+            preDefDamage += A.getMDmgBonusFlat();
         } else {
-            baseDamage += A.getPDmgBonusFlat();
+            preDefDamage += A.getPDmgBonusFlat();
         }
 
-        // 7. Apply PVE/PVP Bonus (Simplified: Mob is PVE, Player is PVP)
-        if (defenderEntity instanceof Player) {
-            baseDamage *= (1 + A.getPvpDmgBonusPercent() / 100.0);
-        } else { // PVE
-            baseDamage *= (1 + A.getPveDmgBonusPercent() / 100.0);
-        }
-
-        // 8. Apply Defense Pipeline (Section G) & 9. Convert DEF -> Reduction
-        double damageAfterDEF = baseDamage;
+        // 7. Apply Defense Pipeline (Section G, Soft DEF Reduction)
+        double damageAfterDEF = preDefDamage;
         if (D != null && defenderEntity instanceof Player defenderPlayer) {
             damageAfterDEF = isMagic ?
-                    applyMagicDEF(A, D, baseDamage, defenderPlayer) :
-                    applyPhysicalDEF(A, D, baseDamage, defenderPlayer);
+                    applyMagicDEF(A, D, preDefDamage, defenderPlayer) :
+                    applyPhysicalDEF(A, D, preDefDamage, defenderPlayer);
         }
 
         double damageTaken = damageAfterDEF;
 
-        // 10. Apply Damage Reduction% (P/M, Melee/Range)
+        // 8. Apply Damage Reduction% (P/M, Melee/Range) (Section 6)
         if (D != null && defenderEntity instanceof Player defenderPlayer) {
+            // General P/M Reduction
             if (isMagic) {
                 damageTaken *= (1 - D.getMDmgReductionPercent() / 100.0);
             } else {
                 damageTaken *= (1 - D.getPDmgReductionPercent() / 100.0);
+            }
 
+            // Melee/Range Reduction
+            if (!isMagic) {
                 if (isRanged) {
                     damageTaken *= (1 - D.getRangePDReductionPercent() / 100.0);
                 } else { // Melee
                     damageTaken *= (1 - D.getMeleePDReductionPercent() / 100.0);
                 }
             }
-
-            // 11. Apply PVE/PVP Reduction (Section C, D)
-            if (defenderEntity instanceof Player) {
-                damageTaken *= (1 - D.getPvpDmgReductionPercent() / 100.0);
-            } else { // PVE
-                damageTaken *= (1 - D.getPveDmgReductionPercent() / 100.0);
-            }
         }
 
-        // 12. Apply Final DMG% (Section I)
-        damageTaken *= (1 + A.getFinalDmgPercent() / 100.0);
-
-        // 13. Apply Final P.DMG% or Final M.DMG% (Section I)
-        if (isMagic) {
-            damageTaken *= (1 + A.getFinalMDmgPercent() / 100.0);
-        } else {
-            damageTaken *= (1 + A.getFinalPDmgPercent() / 100.0);
-        }
-
-        // 14. Apply Final DMG RES% (Section I)
-        if (D != null) {
-            damageTaken *= (1 - D.getFinalDmgResPercent() / 100.0);
-        }
-
-        // 15. Apply Critical (Section F)
+        // 9. Apply Critical if triggered (Section 1.7) - Must be before RAW Multiplier
         boolean isCritical = false;
         if (!isMagic) {
             double effectiveCritChance = calculateCritChance(A, D);
@@ -193,14 +168,43 @@ public class CombatHandler implements Listener {
             }
         }
 
-        // 16. Apply Shield absorption (Section J)
+        // 10. Apply RAW Difference Multiplier (Section 7/8 Step 7) - NEW
+        if (D != null) { // PVP
+            // PVP_RAW = PVP_BONUS - PVP_REDUCE. (Using Percent getters as flat RAW values as a proxy)
+            double attackerPvpRaw = A.getPvpDmgBonusPercent() - A.getPvpDmgReductionPercent();
+            double defenderPvpRaw = D.getPvpDmgBonusPercent() - D.getPvpDmgReductionPercent();
+            double pvpDiff = attackerPvpRaw - defenderPvpRaw;
+            damageTaken *= getTierMultiplier(pvpDiff);
+        } else { // PVE (Defender is Monster/Entity)
+            // PVE_RAW = PVE_BONUS - PVE_REDUCE. (Monster RAW is assumed to be 0)
+            double attackerPveRaw = A.getPveDmgBonusPercent() - A.getPveDmgReductionPercent();
+            double monsterPveRaw = 0.0;
+            double pveDiff = attackerPveRaw - monsterPveRaw;
+            damageTaken *= getTierMultiplier(pveDiff);
+        }
+
+        // 11. Apply Final/True DMG (Keeping original Final DMG steps from existing code)
+        if (D != null) {
+            // Final DMG%
+            damageTaken *= (1 + A.getFinalDmgPercent() / 100.0);
+
+            // Final P/M DMG%
+            if (isMagic) {
+                damageTaken *= (1 + A.getFinalMDmgPercent() / 100.0);
+            } else {
+                damageTaken *= (1 + A.getFinalPDmgPercent() / 100.0);
+            }
+
+            // Final DMG RES%
+            damageTaken *= (1 - D.getFinalDmgResPercent() / 100.0);
+        }
+
+        // 12. Apply Shield absorption (Section J)
         if (D != null && D.getShieldValueFlat() > 0) {
             double absorb = Math.min(D.getShieldValueFlat(), damageTaken);
             damageTaken -= absorb;
             // State change for D.ShieldValue must be handled with care
         }
-
-        // 17. Apply Lifesteal heal (Section K) - We only calculate it here.
 
         // Final Output
         double finalDamage = Math.max(1.0, damageTaken);
@@ -224,10 +228,10 @@ public class CombatHandler implements Listener {
         double def1 = Math.max(0, softPDef - A.getIgnorePDefFlat());
         double effectiveDef = def1 * (1 - A.getIgnorePDefPercent() / 100.0);
 
-        // 5) Convert DEF -> Reduction
+        // Convert DEF -> Reduction (RO Formula: DEF / (DEF + K))
         double defReduction = effectiveDef / (effectiveDef + K_DEFENSE);
 
-        // 6) Apply
+        // Apply
         return damage * (1 - defReduction);
     }
 
@@ -239,15 +243,30 @@ public class CombatHandler implements Listener {
         double def1 = Math.max(0, softMDef - A.getIgnoreMDefFlat());
         double effectiveMDef = def1 * (1 - A.getIgnoreMDefPercent() / 100.0);
 
-        // Convert DEF -> Reduction
+        // Convert DEF -> Reduction (RO Formula: DEF / (DEF + K))
         double mDefReduction = effectiveMDef / (effectiveMDef + K_DEFENSE);
 
         return damage * (1 - mDefReduction);
     }
 
+    // Section 7: RAW Difference Tier Multiplier - NEW
+    private double getTierMultiplier(double diff) {
+        if (diff >= 4000) return 1.55;
+        if (diff >= 3000) return 1.50;
+        if (diff >= 2000) return 1.40;
+        if (diff >= 1000) return 1.25;
+        if (diff >= 500) return 1.175;
+        if (diff <= -4000) return 0.45;
+        if (diff <= -3000) return 0.50;
+        if (diff <= -2000) return 0.60;
+        if (diff <= -1000) return 0.75;
+        if (diff <= -500) return 0.825;
+        return 1.00;
+    }
+
     // Section F: Critical Chance - Corrected
     private double calculateCritChance(PlayerData A, PlayerData D) {
-        // CriticalChance = max(0, LUK × 0.3 - TargetCritRes)
+        // CriticalChance = max(0, CRIT - Target.CRIT_RES)
         int luk = A.getStat("LUK"); // Get LUK stat from PlayerData A
         double rawCritValue = luk * 0.3; // Raw CRIT value
 
@@ -265,6 +284,9 @@ public class CombatHandler implements Listener {
         // CritMultiplier = 1 + (CritDMG% / 100)
         double bonusCrit = A.getCritDmgPercent() / 100.0;
 
+        // Note: CritDMGRes% application is missing here, but the spec says:
+        // FinalDamage = max(NormalDamage, CritDamage × (1 - CRIT_DMG_RES%/100))
+        // We will apply this reduction outside this method in onCombat (Step 9).
         return 1.0 + bonusCrit;
     }
 
