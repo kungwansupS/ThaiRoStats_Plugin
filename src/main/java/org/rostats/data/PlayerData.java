@@ -1,6 +1,6 @@
 package org.rostats.data;
 
-import org.rostats.ROStatsPlugin;
+import org.rostats.ROStatsPlugin; // Import ถูกต้อง
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;

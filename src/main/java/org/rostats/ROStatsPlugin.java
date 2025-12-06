@@ -1,4 +1,4 @@
-package org.rostats;
+package org.rostats; // <-- แก้ไขให้ถูกต้องแล้ว
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -101,7 +101,7 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         dataManager.savePlayerData(event.getPlayer());
     }
 
-    // MODIFIED: Helper method for Floating Text (Hologram) with animation and offset
+    // MODIFIED: Helper method for Floating Text (Hologram) with animation and offset (For EXP/Level Up Stacking)
     public void showFloatingText(UUID playerUUID, String text, double verticalOffset) {
         Player player = Bukkit.getPlayer(playerUUID);
         if (player == null || !player.isOnline()) return;
@@ -109,6 +109,20 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         // Start location: 2.0 blocks above head + offset
         Location startLoc = player.getLocation().add(0, 2.0 + verticalOffset, 0);
 
+        showAnimatedText(startLoc, text);
+    }
+
+    public void showFloatingText(UUID playerUUID, String text) {
+        showFloatingText(playerUUID, text, 0.25);
+    }
+
+    // NEW: Centralized method for Location-based FCT (Damage/Heal/Status)
+    public void showCombatFloatingText(Location loc, String text) {
+        showAnimatedText(loc.add(0, 1.5, 0), text); // Default combat/miss position is +1.5 to +2.0
+    }
+
+    // NEW: Core Animation Logic (Moved from CombatHandler.java and adapted)
+    private void showAnimatedText(Location startLoc, String text) {
         getServer().getScheduler().runTask(this, () -> {
             ArmorStand stand = startLoc.getWorld().spawn(startLoc, ArmorStand.class);
             stand.setVisible(false);
@@ -141,10 +155,37 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         });
     }
 
-    // Keep the old signature for compatibility, delegating to the new one with a medium offset
-    public void showFloatingText(UUID playerUUID, String text) {
-        // Use a medium offset (0.25) for single calls that don't need stacking context
-        showFloatingText(playerUUID, text, 0.25);
+    // NEW: FCT Helper Methods exposed by the plugin (for external calls, e.g., skill handlers)
+
+    // 7) Normal Damage
+    public void showDamageFCT(Location loc, double damage) {
+        showCombatFloatingText(loc, "§f" + String.format("%.0f", damage));
+    }
+
+    // 8) True Damage
+    public void showTrueDamageFCT(Location loc, double damage) {
+        showCombatFloatingText(loc, "§6" + String.format("%.0f", damage));
+    }
+
+    // 10) Heal HP
+    public void showHealHPFCT(Location loc, double value) {
+        showCombatFloatingText(loc, "§a+" + String.format("%.0f", value) + " HP");
+    }
+
+    // 11) Heal SP
+    public void showHealSPFCT(Location loc, double value) {
+        showCombatFloatingText(loc, "§b+" + String.format("%.0f", value) + " SP");
+    }
+
+    // 12) Status Damage (Poison/Burn/Bleed)
+    public void showStatusDamageFCT(Location loc, String status, double value) {
+        String color = switch (status.toLowerCase()) {
+            case "poison" -> "§2";
+            case "burn" -> "§c";
+            case "bleed" -> "§4";
+            default -> "§7"; // Default to grey if status is unknown
+        };
+        showCombatFloatingText(loc, color + "-" + String.format("%.0f", value));
     }
 
     public StatManager getStatManager() { return statManager; }

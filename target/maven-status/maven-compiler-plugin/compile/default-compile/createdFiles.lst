@@ -15,4 +15,3 @@ org\rostats\gui\StatusMenu.class
 org\rostats\hook\PAPIHook.class
 org\rostats\handler\ManaManager.class
 org\rostats\data\PlayerData.class
-org\rostats\handler\CombatHandler$1.class

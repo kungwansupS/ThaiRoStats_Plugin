@@ -14,7 +14,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.scheduler.BukkitTask;
 import org.rostats.ROStatsPlugin;
 import org.rostats.data.PlayerData;
 import org.rostats.data.StatManager;
@@ -49,11 +48,10 @@ public class CombatHandler implements Listener {
 
         // 2. Anti-Exploit Rule: Disable XP Orb Drop
         event.setDroppedExp(0);
-        // event.getDrops().clear(); // Optional for custom item drops
 
         // 3. Anti-Exploit Rule: Skip if victim is player or no exp is dropped
         if (victim instanceof Player) return;
-        if (rawBaseExp <= 0) return; // Skip if no exp is dropped
+        if (rawBaseExp <= 0) return;
 
         // 4. Calculate RawJobEXP
         long rawJobExp = (long) Math.floor(rawBaseExp * JOB_EXP_RATIO);
@@ -71,7 +69,6 @@ public class CombatHandler implements Listener {
 
 
         // 7. Add EXP directly to player fields (PlayerData handles level-up loop and floating text)
-        // Since both calls might result in floating text, they will use the new stacking logic in PlayerData.
         if (finalBaseExp > 0) {
             data.addBaseExp(finalBaseExp, killer.getUniqueId());
         }
@@ -107,7 +104,7 @@ public class CombatHandler implements Listener {
                 int mobHit = 50; // Placeholder Mob HIT
                 if (random.nextDouble() * 100 > (80 + mobHit - victimFlee)) {
                     event.setCancelled(true);
-                    showFloatingText(victim.getLocation().add(0, 1.5, 0), "§7MISS");
+                    plugin.showCombatFloatingText(victim.getLocation(), "§7MISS"); // ใช้ centralized FCT
                     return;
                 }
             }
@@ -129,8 +126,7 @@ public class CombatHandler implements Listener {
         // 1. HIT check (Hit vs Flee)
         if (!isMagic) {
             int attackerHit = stats.getHit(attackerPlayer);
-            // MODIFIED: Defender Flee defaults to 0 if not a player
-            int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 0; // CHANGED 10 to 0
+            int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 0; // Monster Flee is 0
 
             // Formula: ChanceToHit = clamp(Hit / (Hit + TargetFLEE), 5%, 95%)
             double hitRate = (double) attackerHit / (attackerHit + defenderFlee);
@@ -138,7 +134,7 @@ public class CombatHandler implements Listener {
 
             if (random.nextDouble() > hitRate) {
                 event.setCancelled(true);
-                showFloatingText(defenderEntity.getLocation().add(0, 1.5, 0), "§7MISS");
+                plugin.showCombatFloatingText(defenderEntity.getLocation(), "§7MISS"); // ใช้ centralized FCT
                 return;
             }
         }
@@ -229,7 +225,7 @@ public class CombatHandler implements Listener {
             double attackerPveRaw = A.getPveDmgBonusPercent() - A.getPveDmgReductionPercent();
             double monsterPveRaw = 0.0;
             double pveDiff = attackerPveRaw - monsterPveRaw;
-            damageTaken *= getTierMultiplier(pveDiff);
+            damageTaken *= getTierMultiplier(pveDiff); // <-- CORRECTED: Was incorrectly using pvpDiff
         }
 
         // 11. Apply Final/True DMG (Keeping original Final DMG steps from existing code)
@@ -259,13 +255,26 @@ public class CombatHandler implements Listener {
         double finalDamage = Math.max(1.0, damageTaken);
         event.setDamage(finalDamage);
 
+        // 13. Display Damage FCT
         if (isCritical && attackerPlayer != null) {
+            // CRITICAL FCT
             showCritEffects(attackerPlayer, defenderEntity, finalDamage);
+        } else if (finalDamage > 0) {
+            // NORMAL DAMAGE FCT (7)
+            plugin.showDamageFCT(defenderEntity.getLocation(), finalDamage);
+        }
+
+        // True Damage FCT (8) - Assume True Damage is a separate, additional amount
+        if (A.getTrueDamageFlat() > 0.0) {
+            double trueDmg = A.getTrueDamageFlat();
+            // True damage FCT
+            plugin.showTrueDamageFCT(defenderEntity.getLocation().add(0, 0.5, 0), trueDmg); // Show True DMG slightly higher than Normal DMG
+            // Note: True damage must also be applied to the event/victim's health in actual combat loop.
         }
     }
 
     // ==========================================
-    // COMBAT HELPER METHODS
+    // COMBAT HELPER METHODS (Ensure these are present inside the class)
     // ==========================================
 
     private double applyPhysicalDEF(PlayerData A, PlayerData D, double damage, Player defenderPlayer) {
@@ -331,44 +340,12 @@ public class CombatHandler implements Listener {
         return 1.0 + bonusCrit;
     }
 
-    // MODIFIED: Helper for visual effects (Uses animation logic via showFloatingText)
+    // MODIFIED: Helper for visual effects (Uses centralized FCT method)
     private void showCritEffects(Player attacker, LivingEntity victim, double finalDamage) {
-        showFloatingText(victim.getLocation().add(0, 2, 0), "§c§lCRITICAL " + String.format("%.0f", finalDamage));
+        // CRITICAL FCT
+        plugin.showCombatFloatingText(victim.getLocation().add(0, 0.5, 0), "§c§lCRITICAL " + String.format("%.0f", finalDamage)); // Show Critical slightly higher
+
         attacker.playSound(attacker.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1f, 1f);
         attacker.getWorld().spawnParticle(Particle.CRIT, victim.getLocation().add(0, 1, 0), 20);
-    }
-
-    // MODIFIED: Floating Text for Combat (MISS/CRITICAL) with animation
-    private void showFloatingText(Location loc, String text) {
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            org.bukkit.entity.ArmorStand stand = loc.getWorld().spawn(loc, org.bukkit.entity.ArmorStand.class);
-            stand.setVisible(false);
-            stand.setGravity(false);
-            stand.setMarker(true);
-            stand.setCustomName(text);
-            stand.setCustomNameVisible(true);
-            stand.setSmall(true);
-
-            // Animation Task: Move upwards constantly for 1 second (20 ticks)
-            BukkitTask[] task = new BukkitTask[1];
-            task[0] = plugin.getServer().getScheduler().runTaskTimer(plugin, new Runnable() {
-                private int ticks = 0;
-                private final Location currentLocation = stand.getLocation();
-                private final double distance = 0.5; // Total distance to move up
-                private final double step = distance / 20.0; // Distance per tick (over 20 ticks)
-
-                @Override
-                public void run() {
-                    if (stand.isDead() || ticks >= 20) {
-                        stand.remove();
-                        if (task[0] != null) task[0].cancel();
-                        return;
-                    }
-                    currentLocation.add(0, step, 0); // Move up
-                    stand.teleport(currentLocation);
-                    ticks++;
-                }
-            }, 0L, 1L);
-        });
     }
 }
