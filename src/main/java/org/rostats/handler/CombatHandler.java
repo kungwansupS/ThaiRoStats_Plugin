@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -26,6 +27,7 @@ public class CombatHandler implements Listener {
     private final Random random = new Random();
     private final double SKILL_POWER = 1.0; // Default skill power for basic attacks
     private final double BASE_CRIT = 1.5;
+    private final int K_DEFENSE = 400; // Constant K for defense formula (Section G)
 
     public CombatHandler(ROStatsPlugin plugin) {
         this.plugin = plugin;
@@ -83,7 +85,7 @@ public class CombatHandler implements Listener {
 
             // Formula: HitRate = 0.75 + (AttackerHIT - DefenderFLEE) / 1000
             double hitRate = 0.75 + (attackerHit - defenderFlee) / 1000.0;
-            hitRate = Math.max(0.05, Math.min(0.95, hitRate)); // Clamp (0.05 to 0.95)
+            hitRate = Math.max(0.05, Math.min(0.95, hitRate));
 
             if (random.nextDouble() > hitRate) {
                 event.setCancelled(true);
@@ -135,16 +137,16 @@ public class CombatHandler implements Listener {
 
         // 8. Apply Defense Pipeline (Section G) & 9. Convert DEF -> Reduction
         double damageAfterDEF = baseDamage;
-        if (D != null) {
+        if (D != null && defenderEntity instanceof Player defenderPlayer) {
             damageAfterDEF = isMagic ?
-                    applyMagicDEF(A, D, baseDamage) :
-                    applyPhysicalDEF(A, D, baseDamage);
+                    applyMagicDEF(A, D, baseDamage, defenderPlayer) :
+                    applyPhysicalDEF(A, D, baseDamage, defenderPlayer);
         }
 
         double damageTaken = damageAfterDEF;
 
         // 10. Apply Damage Reduction% (P/M, Melee/Range)
-        if (D != null) {
+        if (D != null && defenderEntity instanceof Player defenderPlayer) {
             if (isMagic) {
                 damageTaken *= (1 - D.getMDmgReductionPercent() / 100.0);
             } else {
@@ -193,21 +195,18 @@ public class CombatHandler implements Listener {
 
         // 16. Apply Shield absorption (Section J)
         if (D != null && D.getShieldValueFlat() > 0) {
-            // Placeholder: Needs access to live ShieldValue, for simplicity we use the base stat.
-            // In a full implementation, D.ShieldValue must be the current remaining shield.
             double absorb = Math.min(D.getShieldValueFlat(), damageTaken);
             damageTaken -= absorb;
-            // D.setShieldValue(D.getShieldValueFlat() - absorb); // This state change requires refactoring
+            // State change for D.ShieldValue must be handled with care
         }
 
         // 17. Apply Lifesteal heal (Section K) - We only calculate it here.
-        // double lifestealHeal = isMagic ? damageTaken * (A.getLifestealMPercent() / 100.0) : damageTaken * (A.getLifestealPPercent() / 100.0);
 
         // Final Output
         double finalDamage = Math.max(1.0, damageTaken);
         event.setDamage(finalDamage);
 
-        if (isCritical) {
+        if (isCritical && attackerPlayer != null) {
             showCritEffects(attackerPlayer, defenderEntity, finalDamage);
         }
     }
@@ -217,9 +216,9 @@ public class CombatHandler implements Listener {
     // ==========================================
 
     // Section G: Defense Pipeline
-    private double applyPhysicalDEF(PlayerData A, PlayerData D, double damage) {
-        // Assume BasePDef is D.getSoftDef() for now
-        double def0 = D.getSoftDef((Player) D.getStatKeys().iterator().next()); // Proxy D.PDef
+    private double applyPhysicalDEF(PlayerData A, PlayerData D, double damage, Player defenderPlayer) {
+        StatManager stats = plugin.getStatManager();
+        double def0 = stats.getSoftDef(defenderPlayer); // CORRECT CALL: Proxy BasePDef
 
         // 1) Penetration flat: def1 = max(0, def0 - A.PPenFlat)
         double def1 = Math.max(0, def0 - A.getPPenFlat());
@@ -240,12 +239,16 @@ public class CombatHandler implements Listener {
         return damage * (1 - defReduction);
     }
 
-    // Placeholder for Magic DEF Pipeline (Section D)
-    private double applyMagicDEF(PlayerData A, PlayerData D, double damage) {
-        // Simplified: Uses MDEF proxy and standard formula
-        double effectiveMDef = D.getSoftMDef((Player) D.getStatKeys().iterator().next());
+    private double applyMagicDEF(PlayerData A, PlayerData D, double damage, Player defenderPlayer) {
+        StatManager stats = plugin.getStatManager();
+        double def0 = stats.getSoftMDef(defenderPlayer); // CORRECT CALL: Proxy BaseMDef
 
-        // Placeholder application: Damage *= (1 - (MDef / (MDef + K)))
+        // Simplified Magic Def Pipeline
+        double effectiveMDef = Math.max(0, def0 - A.getMPenFlat());
+        effectiveMDef *= (1 - A.getMPenPercent() / 100.0);
+        effectiveMDef = Math.max(0, effectiveMDef - A.getIgnoreMDefFlat());
+        effectiveMDef *= (1 - A.getIgnoreMDefPercent() / 100.0);
+
         double mDefReduction = effectiveMDef / (effectiveMDef + K_DEFENSE);
 
         return damage * (1 - mDefReduction);
@@ -265,10 +268,6 @@ public class CombatHandler implements Listener {
 
     // Section F: Critical Multiplier
     private double calculateCritMultiplier(PlayerData A, PlayerData D) {
-        // baseCrit = 1.5
-        // bonusCrit = (A.CRIT_DMG_PERCENT / 100)
-        // resistCrit = (D.CRIT_DMG_RES_PERCENT / 100)
-
         double bonusCrit = A.getCritDmgPercent() / 100.0;
         double resistCrit = (D != null) ? D.getCritDmgResPercent() / 100.0 : 0.0;
 

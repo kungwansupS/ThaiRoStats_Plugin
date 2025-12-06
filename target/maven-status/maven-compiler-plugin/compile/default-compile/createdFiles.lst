@@ -1,3 +1,15 @@
-org\rostats\ROStatsPlugin.class
 org\rostats\data\StatManager.class
+org\rostats\gui\CharacterGUI$Tab.class
+org\rostats\gui\GUIListener.class
+org\rostats\data\DataManager.class
+org\rostats\gui\MainMenu.class
 org\rostats\handler\AttributeHandler.class
+org\rostats\command\PlayerCommand.class
+org\rostats\handler\CombatHandler.class
+org\rostats\command\AdminCommand.class
+org\rostats\gui\CharacterGUI.class
+org\rostats\ROStatsPlugin.class
+org\rostats\gui\StatusMenu.class
+org\rostats\hook\PAPIHook.class
+org\rostats\handler\ManaManager.class
+org\rostats\data\PlayerData.class

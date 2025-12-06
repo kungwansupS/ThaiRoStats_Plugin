@@ -22,7 +22,7 @@ public class PlayerData {
     private double pAtkBonusFlat = 0.0;
     private double mAtkBonusFlat = 0.0;
     private double critRes = 0.0;
-    private double critDmgPercent = 50.0; // Base Crit DMG is 1.5x, so 50%
+    private double critDmgPercent = 50.0;
     private double critDmgResPercent = 0.0;
     private double pDmgBonusPercent = 0.0;
     private double mDmgBonusPercent = 0.0;
