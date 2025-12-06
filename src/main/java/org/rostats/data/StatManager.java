@@ -43,7 +43,7 @@ public class StatManager {
     // Helper method to get the total cost of ALL pending points
     public int getTotalPendingCost(PlayerData data) {
         int totalCost = 0;
-        for (String stat : data.getStatKeys()) { // FIX: Use data.getStatKeys()
+        for (String stat : data.getStatKeys()) {
             totalCost += getPendingCost(data, stat);
         }
         return totalCost;
@@ -87,7 +87,7 @@ public class StatManager {
         int totalCost = getTotalPendingCost(data);
 
         if (data.getStatPoints() >= totalCost) {
-            for (String stat : data.getStatKeys()) { // FIX: Use data.getStatKeys()
+            for (String stat : data.getStatKeys()) {
                 int pendingCount = data.getPendingStat(stat);
                 if (pendingCount > 0) {
                     data.setStat(stat, data.getStat(stat) + pendingCount);
@@ -113,11 +113,92 @@ public class StatManager {
         return ((currentVal - 1) / costDivisor) + costBase;
     }
 
-    // === FORMULAS ===
-    // ... (rest of StatManager methods remain the same) ...
+    // === FORMULAS (RESTORED COMBAT METHODS) ===
+    public double getPhysicalAttack(Player player) {
+        PlayerData data = getData(player.getUniqueId());
+        // Note: Using Base Stat + Pending Stat for live calculation in display/combat
+        int str = data.getStat("STR") + data.getPendingStat("STR");
+        int dex = data.getStat("DEX") + data.getPendingStat("DEX");
+        int luk = data.getStat("LUK") + data.getPendingStat("LUK");
+
+        return (str * 2.0) + (dex * 0.5) + (luk * 0.5) + data.getBaseLevel();
+    }
+
+    public double getMagicAttack(Player player) {
+        PlayerData data = getData(player.getUniqueId());
+        int intel = data.getStat("INT") + data.getPendingStat("INT");
+        int dex = data.getStat("DEX") + data.getPendingStat("DEX");
+        int luk = data.getStat("LUK") + data.getPendingStat("LUK");
+        return (intel * 2.0) + (dex * 0.5) + (luk * 0.5) + data.getBaseLevel();
+    }
+
+    public double getPhysicalDamageBonus(Player player) {
+        int str = getStat(player.getUniqueId(), "STR");
+        return (str * 0.5) / 100.0;
+    }
+
+    public double getMagicDamageBonus(Player player) {
+        int intel = getStat(player.getUniqueId(), "INT");
+        return (intel * 0.5) / 100.0;
+    }
+
+    public int getHit(Player player) {
+        PlayerData data = getData(player.getUniqueId());
+        int dex = getStat(player.getUniqueId(), "DEX") + data.getPendingStat("DEX");
+        return data.getBaseLevel() + dex;
+    }
+
+    public int getFlee(Player player) {
+        PlayerData data = getData(player.getUniqueId());
+        int agi = getStat(player.getUniqueId(), "AGI") + data.getPendingStat("AGI");
+        return data.getBaseLevel() + agi;
+    }
+
     public double getAspdBonus(Player player) {
         int agi = getStat(player.getUniqueId(), "AGI");
         int dex = getStat(player.getUniqueId(), "DEX");
         return (agi * 0.01) + (dex * 0.002);
+    }
+
+    public double getSoftDef(Player player) {
+        int vit = getStat(player.getUniqueId(), "VIT");
+        return vit * 0.5;
+    }
+
+    public double getSoftMDef(Player player) {
+        int intel = getStat(player.getUniqueId(), "INT");
+        return intel * 0.5;
+    }
+
+    public double getCritChance(Player player) {
+        int luk = getStat(player.getUniqueId(), "LUK");
+        return luk * 0.3;
+    }
+
+    public double getPhysicalPenetration(Player player) {
+        int luk = getStat(player.getUniqueId(), "LUK");
+        return (luk * 0.1) / 100.0;
+    }
+
+    public double getCriticalDamage(Player player) {
+        int str = getStat(player.getUniqueId(), "STR");
+        return 1.4 + ((str * 0.2) / 100.0);
+    }
+
+    public double calculatePower(Player player) {
+        PlayerData data = getData(player.getUniqueId());
+        double str = data.getStat("STR");
+        double intel = data.getStat("INT");
+        double agi = data.getStat("AGI");
+        double vit = data.getStat("VIT");
+        double dex = data.getStat("DEX");
+        double luk = data.getStat("LUK");
+        int baseLevel = data.getBaseLevel();
+
+        double coreStatPower = (str + intel) * 5.0;
+        double secondaryStatPower = (agi + vit + dex + luk) * 2.0;
+        double levelPower = baseLevel * 10.0;
+
+        return coreStatPower + secondaryStatPower + levelPower;
     }
 }
