@@ -54,16 +54,13 @@ public class StatManager {
         int pendingCount = data.getPendingStat(statName);
         int currentVal = data.getStat(statName);
 
-        // Check if adding one more pending point exceeds available total points
         int costOfNextPoint = getStatCost(currentVal + pendingCount);
         int totalPendingCost = getTotalPendingCost(data);
 
         if (data.getStatPoints() < (totalPendingCost + costOfNextPoint)) {
-            // Cannot afford even if the click is temporary
             return false;
         }
 
-        // Update pending count (no point deduction yet)
         data.setPendingStat(statName, pendingCount + 1);
         return true;
     }
@@ -73,15 +70,13 @@ public class StatManager {
         int pendingCount = data.getPendingStat(statName);
 
         if (pendingCount <= 0) {
-            return false; // Cannot reduce allocated stats (Req must be > 0)
+            return false;
         }
 
-        // Update pending count (no point refund yet)
         data.setPendingStat(statName, pendingCount - 1);
         return true;
     }
 
-    // NEW: Apply all pending stats and deduct cost
     public void allocateStats(Player player) {
         PlayerData data = getData(player.getUniqueId());
         int totalCost = getTotalPendingCost(data);
@@ -93,10 +88,9 @@ public class StatManager {
                     data.setStat(stat, data.getStat(stat) + pendingCount);
                 }
             }
-            // Deduct cost and clear pending
             data.setStatPoints(data.getStatPoints() - totalCost);
             data.clearAllPendingStats();
-            plugin.getAttributeHandler().updatePlayerStats(player); // Recalculate Max HP/ASPD
+            plugin.getAttributeHandler().updatePlayerStats(player);
             player.sendMessage("§a[Allocate] Stats applied! Cost: " + totalCost);
         } else {
             player.sendMessage("§c[Allocate] Not enough points! Required: " + totalCost);
@@ -116,7 +110,6 @@ public class StatManager {
     // === FORMULAS (RESTORED COMBAT METHODS) ===
     public double getPhysicalAttack(Player player) {
         PlayerData data = getData(player.getUniqueId());
-        // Note: Using Base Stat + Pending Stat for live calculation in display/combat
         int str = data.getStat("STR") + data.getPendingStat("STR");
         int dex = data.getStat("DEX") + data.getPendingStat("DEX");
         int luk = data.getStat("LUK") + data.getPendingStat("LUK");

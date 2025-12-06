@@ -35,7 +35,7 @@ public class GUIListener implements Listener {
         // 1. Handle Tab Clicks (R0 C2, C3)
         if (slot == 2) new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
         else if (slot == 3) new CharacterGUI(plugin).open(player, Tab.MORE_INFO);
-        else if (slot == 34 || slot == 44) new CharacterGUI(plugin).open(player, Tab.RESET_CONFIRM); // Reset Point button / Reset All Button
+        else if (slot == 34 || slot == 44) new CharacterGUI(plugin).open(player, Tab.RESET_CONFIRM); // Reset Point (34) / Reset All (44)
 
             // 2. Handle Close/Exit Button (Slot 8)
         else if (slot == 8) { // R0 C8: Exit
@@ -58,8 +58,8 @@ public class GUIListener implements Listener {
             new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
         }
 
-        // 5. Handle Reset Select (Slot 43)
-        else if (slot == 43 && name.contains("Reset Select")) {
+        // 5. Handle Reset Select (Slot 42)
+        else if (slot == 42 && name.contains("Reset Select")) {
             plugin.getStatManager().getData(player.getUniqueId()).clearAllPendingStats();
             player.sendMessage("§e[System] Pending Stat Changes have been cleared.");
             new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
