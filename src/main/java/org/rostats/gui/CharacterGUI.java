@@ -79,7 +79,15 @@ public class CharacterGUI {
         inv.setItem(8, createItem(Material.BARRIER, "§c§lX", "§7คลิกเพื่อปิดหน้าจอสถานะ"));
 
         // R3 C6: Points Left (Slot 33)
-        inv.setItem(33, createItem(Material.GOLD_NUGGET, "§6§lแต้มคงเหลือ", "§7แต้มที่สามารถใช้อัพเกรด Stat ได้: §e" + data.getStatPoints()));
+        StatManager stats = plugin.getStatManager();
+        int totalPendingCost = stats.getTotalPendingCost(data);
+        int remainingPoints = data.getStatPoints() - totalPendingCost;
+
+        inv.setItem(33, createItem(Material.GOLD_NUGGET, "§6§lแต้มคงเหลือ",
+                "§7แต้มที่มีอยู่ (รวมแต้มรอดำเนินการ): §e" + data.getStatPoints(),
+                "§7ค่าใช้จ่ายที่รอดำเนินการ: §c" + totalPendingCost,
+                "§7แต้มคงเหลือ (หลังหักค่าใช้จ่าย): §a" + remainingPoints
+        ));
 
         // R3 C7: Reset Point (Slot 34)
         inv.setItem(34, createItem(Material.REDSTONE_BLOCK, "§c§lReset Point", "§7คลิกเพื่อเข้าสู่หน้ายืนยันการรีเซ็ตแต้มทั้งหมด"));
@@ -104,6 +112,28 @@ public class CharacterGUI {
         double power = stats.calculatePower(player);
         double maxPower = 5000;
 
+        // --- Max Level Logic ---
+        int maxBaseLevel = data.getMaxBaseLevel();
+        int maxJobLevel = data.getMaxJobLevel();
+
+        boolean baseIsMax = baseLevel >= maxBaseLevel;
+        long baseExpReq = data.getBaseExpReq();
+        String baseExpReqStr = baseIsMax ? "MAX" : String.valueOf(baseExpReq);
+
+        boolean jobIsMax = jobLevel >= maxJobLevel;
+        long jobExpReq = data.getJobExpReq();
+        String jobExpReqStr = jobIsMax ? "MAX" : String.valueOf(jobExpReq);
+
+        // For bar visualization, cap current EXP at required EXP for visual progress
+        double baseExpForBar = data.getBaseExp();
+        double jobExpForBar = data.getJobExp();
+
+        // If maxed, ensure the bar shows full progress visually (current >= required)
+        if (baseIsMax) baseExpForBar = Math.max(baseExpForBar, baseExpReq);
+        if (jobIsMax) jobExpForBar = Math.max(jobExpForBar, jobExpReq);
+        // -----------------------------
+
+
         List<String> lore = new ArrayList<>();
         lore.add("§7--- สถานะปัจจุบัน ---");
 
@@ -111,10 +141,15 @@ public class CharacterGUI {
         lore.add(createBar(currentHP, maxHP, "HP"));
         lore.add("§bSP: §f" + String.format("%.0f/%.0f", data.getCurrentSP(), data.getMaxSP()));
         lore.add(createBar(data.getCurrentSP(), data.getMaxSP(), "SP"));
-        lore.add("§9Base Lv§a" + baseLevel + " §8(" + data.getBaseExp() + "/" + data.getBaseExpReq() + ")");
-        lore.add(createBar(data.getBaseExp(), data.getBaseExpReq(), "BASE_LV"));
-        lore.add("§eJob Lv§a" + jobLevel + " §8(" + data.getJobExp() + "/" + data.getJobExpReq() + ")");
-        lore.add(createBar(data.getJobExp(), data.getJobExpReq(), "JOB_LV"));
+
+        // Base Level Display: Lv/LevelCap Exp/Req or Exp/MAX
+        lore.add("§9Base Lv§a" + baseLevel + " §8(" + data.getBaseExp() + "/" + baseExpReqStr + ")");
+        lore.add(createBar(baseExpForBar, baseExpReq, "BASE_LV"));
+
+        // Job Level Display
+        lore.add("§eJob Lv§a" + jobLevel + " §8(" + data.getJobExp() + "/" + jobExpReqStr + ")");
+        lore.add(createBar(jobExpForBar, jobExpReq, "JOB_LV"));
+
         lore.add("§cStamina: §a100/100");
         lore.add(createBar(100.0, 100.0, "STAMINA"));
         lore.add("§9Power: §f" + String.format("%.0f", power));
@@ -266,8 +301,6 @@ public class CharacterGUI {
     }
 
     // --- Stat Row Helper (R1, R2, R3, R4, R5) ---
-    // ... (rest of createStatRow is unchanged) ...
-
     private void displayAllocationMatrix(Inventory inv, Player player, PlayerData data) {
         // R1: Stats (Slots 9-14)
         // R2: Bonus (Slots 18-23)
@@ -312,8 +345,6 @@ public class CharacterGUI {
         inv.setItem(14, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
     }
 
-    // --- Stat Row Helper (R1, R2, R3, R4, R5) ---
-    // This now calls a dedicated helper for stat descriptions
     private void createStatRow(Inventory inv, Player player, PlayerData data, String statKey, Material mat, int statSlot, int bonusSlot, int reqSlot, int addSlot, int minusSlot, String statFullName) {
         StatManager stats = plugin.getStatManager();
         int currentVal = data.getStat(statKey);
@@ -363,7 +394,6 @@ public class CharacterGUI {
         ));
     }
 
-    // NEW: Helper method to generate detailed stat descriptions - Corrected to new effects
     private List<String> getStatDescriptionLore(String statKey) {
         List<String> lines = new ArrayList<>();
 
@@ -439,7 +469,6 @@ public class CharacterGUI {
         return lines;
     }
 
-    // (The rest of the class methods remain the same)
     private ItemStack createTabItem(Tab currentTab, Tab activeTab, Material mat, String name, String[] desc) {
         ItemStack item = createItem(mat, (currentTab == activeTab ? "§a§l" : "§f") + name, desc);
         if (currentTab == activeTab) item.addUnsafeEnchantment(Enchantment.UNBREAKING, 1);
@@ -457,8 +486,13 @@ public class CharacterGUI {
 
         if (max == 0) return empty + "██████████";
 
-        double effectiveCurrent = Math.min(current, max);
-        int fillAmount = (int) Math.round((effectiveCurrent / max) * length);
+        // For max level visual bug fix: if current > max, the bar should be full.
+        double effectiveMax = (max < 1 && max > 0) ? 1.0 : max; // Ensure division by zero doesn't occur for small values
+        double effectiveCurrent = Math.min(current, effectiveMax);
+        if (current > max && max > 0) effectiveCurrent = max; // If capped, treat current as max for progress bar, even if it overflowed internally.
+
+
+        int fillAmount = (int) Math.round((effectiveCurrent / effectiveMax) * length);
 
         StringBuilder bar = new StringBuilder();
         for (int i = 0; i < length; i++) {
@@ -469,7 +503,6 @@ public class CharacterGUI {
         return bar.toString();
     }
 
-    // Corrected to use the custom separator "§8| §7" and a wider max length
     private String formatTwoColumns(String left, String right) {
         final String separator = "§8| §7";
         final int MAX_LENGTH = 45; // Adjusted max length for better fit
@@ -494,7 +527,4 @@ public class CharacterGUI {
         item.setItemMeta(meta);
         return item;
     }
-
-    // LORE GENERATION METHODS (for Tabs)
-    // (getBasicStatusLore, getGeneralLore, getAdvancedLore, getSpecialLore, getStatDescriptionLore defined above)
 }

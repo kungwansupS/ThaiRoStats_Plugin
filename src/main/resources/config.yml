@@ -11,8 +11,13 @@ stat-cost:
 # --- Experience & Points ---
 exp-formula:
   job-exp-ratio: 0.75 # RawJobEXP = RawBaseEXP * Ratio
-  base-exp-multiplier: 10 # EXP ที่ต้องการ = (Level^3) * Multiplier (For Base)
-  job-exp-multiplier: 8 # EXP ที่ต้องการ = (Level^3) * Multiplier (For Job)
+  base-exp-multiplier: 0.06663935073413368 # EXP ที่ต้องการ: A (Multiplier) สำหรับ Base EXP [UPDATED]
+  job-exp-multiplier: 0.06663935073413368 # EXP ที่ต้องการ: A (Multiplier) สำหรับ Job EXP [UPDATED]
+  exp-exponent: 4.707041855905981 # Exponent B ในสูตร EXP_required(level) = A * level^B * (1 + WLF) [UPDATED]
+  world-level-factor: 0.0 # World Level Factor (WLF) ในสูตร EXP_required(level) = A * level^B * (1 + WLF)
+  # NEW: Max Base Level is calculated as: [max-level-world-base] + 8
+  max-level-world-base: 92 # World Level Base. Max Base LV Cap = Config Value + 8 (e.g. 92+8=100)
+  max-job-level: 10 # Maximum Job Level. หาก Job Level ถึงค่านี้ จะไม่ได้รับ Job EXP เพิ่ม
 stat-points-gain:
   level-50-threshold: 50
   points-low-level: 5 # Stat Points ที่ได้รับต่อเลเวล (เมื่อ Base Level <= 50)

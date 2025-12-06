@@ -162,7 +162,7 @@ public class PlayerData {
         int baseLevel = getBaseLevel();
 
         // MaxHP = (BaseHP + BaseHP × VIT × 0.01) × (1 + MaxHP% / 100)
-        // Assume BaseHP = 100 + baseLevel * 10
+        // Assume BaseHP = 18 + baseLevel * 2.0
         double baseHealth = 18 + (baseLevel * 2.0);
         double vitMultiplier = 1.0 + (vit * 0.01);
 
@@ -176,7 +176,7 @@ public class PlayerData {
         int baseLevel = getBaseLevel();
 
         // MaxSP = (BaseSP + BaseSP × INT × 0.01) × (1 + MaxSP% / 100)
-        // Assume BaseSP = 20 + baseLevel * 3
+        // Assume BaseSP = 20 + baseLevel * 3.0
         double baseSP = 20.0 + (baseLevel * 3.0);
         double intMultiplier = 1.0 + (intel * 0.01);
 
@@ -224,34 +224,89 @@ public class PlayerData {
     public void setResetCount(int count) { this.resetCount = count; }
     public void incrementResetCount() { this.resetCount++; }
 
-    // MODIFIED: Base EXP gain logic (Uses higher offset 0.5 for stacking)
+    // NEW Helper: Calculate EXP Bonus Multiplier based on Player LV vs World LV
+    private double getExpBonusMultiplier(int baseLevel) {
+        int worldLevel = plugin.getConfig().getInt("exp-formula.max-level-world-base", 92);
+
+        int levelDifference = worldLevel - baseLevel;
+
+        if (levelDifference >= 30) {
+            // base lv < 30 ของเวลโลก -> bonus+300% = multiplier 4.0
+            return 4.0;
+        } else if (levelDifference >= 20) {
+            // base lv < 20 ของเวลโลก -> bonus+200% = multiplier 3.0
+            return 3.0;
+        } else if (levelDifference >= 10) {
+            // base lv < 10 ของเวลโลก -> bonus+100% = multiplier 2.0
+            return 2.0;
+        } else if (levelDifference >= 1) {
+            // base lv < 1 ของเวลโลก -> bonus+50% = multiplier 1.5
+            return 1.5;
+        } else {
+            // base lv >= เวลโลก -> bonus + 0% = multiplier 1.0
+            return 1.0;
+        }
+    }
+
+    // MODIFIED: Base EXP gain logic (Uses higher offset 0.5 for stacking and applies new bonus)
     public void addBaseExp(long amount, UUID playerUUID) {
+        // NEW: Max Base Level Cap check using dedicated config
+        int maxBaseLevel = getMaxBaseLevel(); // ใช้ Helper method
+
+        // Apply EXP Bonus Multiplier based on World Level difference
+        double expMultiplier = getExpBonusMultiplier(this.baseLevel);
+        amount = (long) Math.floor(amount * expMultiplier);
+
         long expGained = amount;
         plugin.showFloatingText(playerUUID, "§b+" + expGained + " Base EXP", 0.5); // Offset 0.5 (Higher)
 
         this.baseExp += amount;
-        while (this.baseExp >= getBaseExpReq(this.baseLevel)) { // Use getBaseExpReq
+
+        // Only level up if current level is less than the max level
+        while (this.baseLevel < maxBaseLevel && this.baseExp >= getBaseExpReq(this.baseLevel)) { // ใช้ getBaseExpReq
+
             this.baseExp -= getBaseExpReq(this.baseLevel);
             this.baseLevel++;
             this.statPoints += getStatPointsGain(this.baseLevel);
             // Floating text for Level Up (Base above Job)
             plugin.showFloatingText(playerUUID, "§6LEVEL UP! §fLv " + this.baseLevel, 0.5); // Offset 0.5 (Higher)
         }
+
+        // If we are at the max level after processing EXP, notify the player.
+        if (this.baseLevel >= maxBaseLevel) {
+            plugin.showFloatingText(playerUUID, "§cMAX BASE LEVEL REACHED!", 0.5);
+        }
+
         calculateMaxSP();
     }
 
-    // MODIFIED: Job EXP gain logic (Uses lower offset 0.0 for stacking)
+    // MODIFIED: Job EXP gain logic (Uses lower offset 0.0 for stacking and applies new bonus)
     public void addJobExp(long amount, UUID playerUUID) {
+        // NEW: Max Job Level Cap check using dedicated config
+        int maxJobLevel = getMaxJobLevel(); // ใช้ Helper method
+
+        // Apply EXP Bonus Multiplier based on World Level difference
+        double expMultiplier = getExpBonusMultiplier(this.baseLevel);
+        amount = (long) Math.floor(amount * expMultiplier);
+
         long expGained = amount;
         plugin.showFloatingText(playerUUID, "§e+" + expGained + " Job EXP", 0.0); // Offset 0.0 (Lower)
 
         this.jobExp += amount;
-        while (this.jobExp >= getJobExpReq(this.jobLevel)) {
+
+        // Only level up if current level is less than the max job level
+        while (this.jobLevel < maxJobLevel && this.jobExp >= getJobExpReq(this.jobLevel)) {
+
             this.jobExp -= getJobExpReq(this.jobLevel);
             this.jobLevel++;
             this.skillPoints += 1; // Assume 1 Skill Point per Job Level for now
             // Floating text for Job Level Up (Job below Base)
             plugin.showFloatingText(playerUUID, "§eJOB LEVEL UP! §fJob Lv " + this.jobLevel, 0.0); // Offset 0.0 (Lower)
+        }
+
+        // If we are at the max job level after processing EXP, notify the player.
+        if (this.jobLevel >= maxJobLevel) {
+            plugin.showFloatingText(playerUUID, "§cMAX JOB LEVEL REACHED!", 0.0);
         }
     }
 
@@ -260,19 +315,64 @@ public class PlayerData {
     public long getBaseExpReq() { return getBaseExpReq(baseLevel); }
     public long getJobExpReq() { return getJobExpReq(jobLevel); }
 
-    // MODIFIED: Base Exp Req (uses cubic formula with Base multiplier)
-    private long getBaseExpReq(int level) {
-        int multiplier = plugin.getConfig().getInt("exp-formula.base-exp-multiplier", 10);
-        // Using cubic formula from config as per existing implementation
-        return (long) (Math.pow(level, 3) * multiplier);
+    // NEW Helper: Custom Rounding Logic for EXP
+    private long customRoundExp(double rawExp) {
+        if (rawExp < 1) return 1L; // Minimum EXP required is 1
+
+        long roundedExp;
+        // Calculate number of digits in the integer part (1-99, 100-99999, 100000+)
+        int digits = (int) Math.log10(rawExp) + 1;
+
+        if (digits <= 2) {
+            // 1-2 digits (1-99): Round up the decimal point (ceiling)
+            roundedExp = (long) Math.ceil(rawExp);
+        } else if (digits <= 5) {
+            // 3-5 digits (100-99,999): Round up to the next multiple of 10
+            double divisionFactor = 10.0;
+            roundedExp = (long) (Math.ceil(rawExp / divisionFactor) * divisionFactor);
+        } else {
+            // 6+ digits (100,000+): Round up to the next multiple of 100
+            double divisionFactor = 100.0;
+            roundedExp = (long) (Math.ceil(rawExp / divisionFactor) * divisionFactor);
+        }
+
+        // Ensure minimum of 1
+        return Math.max(1L, roundedExp);
     }
 
-    // NEW: Job Exp Req (uses cubic formula with Job multiplier)
-    private long getJobExpReq(int level) {
-        int multiplier = plugin.getConfig().getInt("exp-formula.job-exp-multiplier", 8);
-        // Using cubic formula from config as per existing implementation
-        return (long) (Math.pow(level, 3) * multiplier);
+    // MODIFIED: Base Exp Req (ใช้สูตร A * level^B * (1 + WLF) โดย WLF ถูกตั้งค่าไว้ที่ 0.0)
+    private long getBaseExpReq(int level) {
+        double A = plugin.getConfig().getDouble("exp-formula.base-exp-multiplier", 0.06663935073413368);
+        double B = plugin.getConfig().getDouble("exp-formula.exp-exponent", 4.707041855905981);
+        double WLF = plugin.getConfig().getDouble("exp-formula.world-level-factor", 0.0);
+
+        // rawExp = A * level^B * (1 + WLF)
+        double rawExp = A * Math.pow(level, B) * (1 + WLF);
+        return customRoundExp(rawExp);
     }
+
+    // MODIFIED: Job Exp Req (ใช้สูตร A * level^B * (1 + WLF) โดย WLF ถูกตั้งค่าไว้ที่ 0.0)
+    private long getJobExpReq(int level) {
+        double A = plugin.getConfig().getDouble("exp-formula.job-exp-multiplier", 0.06663935073413368); // Use same A for job
+        double B = plugin.getConfig().getDouble("exp-formula.exp-exponent", 4.707041855905981);
+        double WLF = plugin.getConfig().getDouble("exp-formula.world-level-factor", 0.0);
+
+        // rawExp = A * level^B * (1 + WLF)
+        double rawExp = A * Math.pow(level, B) * (1 + WLF);
+        return customRoundExp(rawExp);
+    }
+
+    // NEW Helper: Get the actual Max Base Level
+    public int getMaxBaseLevel() {
+        int worldLevelBase = plugin.getConfig().getInt("exp-formula.max-level-world-base", 92);
+        return worldLevelBase + 8;
+    }
+
+    // NEW Helper: Get the actual Max Job Level
+    public int getMaxJobLevel() {
+        return plugin.getConfig().getInt("exp-formula.max-job-level", 10);
+    }
+
 
     // Renamed for clarity, kept functionality for compatibility
     private int getStatPointsGain(int level) {
