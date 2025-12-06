@@ -1,190 +1,161 @@
-package org.rostats.data;
+package org.rostats.handler;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.rostats.ROStatsPlugin;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import org.rostats.data.StatManager;
 
-public class StatManager {
-    private final Map<UUID, PlayerData> playerDataMap = new HashMap<>();
+import java.time.Duration;
+import java.util.Random;
+
+public class CombatHandler implements Listener {
+
     private final ROStatsPlugin plugin;
+    private final Random random = new Random();
 
-    public StatManager(ROStatsPlugin plugin) {
+    public CombatHandler(ROStatsPlugin plugin) {
         this.plugin = plugin;
     }
 
-    public PlayerData getData(UUID uuid) {
-        return playerDataMap.computeIfAbsent(uuid, k -> new PlayerData(plugin));
-    }
+    @EventHandler
+    public void onCombat(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof LivingEntity victim)) return;
 
-    public int getStat(UUID uuid, String statName) {
-        return getData(uuid).getStat(statName);
-    }
+        double weaponDamage = event.getDamage();
+        Player attackerPlayer = null;
+        Player victimPlayer = null;
+        boolean isRanged = false;
+        boolean isMagic = (event.getCause() == EntityDamageEvent.DamageCause.MAGIC);
+        Entity damagerEntity = event.getDamager();
 
-    public void setStat(UUID uuid, String statName, int value) {
-        getData(uuid).setStat(statName, value);
-    }
-
-    // Helper method to get the total cost of pending points for one stat
-    public int getPendingCost(PlayerData data, String statName) {
-        int pendingCount = data.getPendingStat(statName);
-        if (pendingCount == 0) return 0;
-
-        int currentVal = data.getStat(statName);
-        int totalCost = 0;
-
-        for (int i = 0; i < pendingCount; i++) {
-            totalCost += getStatCost(currentVal + i);
-        }
-        return totalCost;
-    }
-
-    // Helper method to get the total cost of ALL pending points
-    public int getTotalPendingCost(PlayerData data) {
-        int totalCost = 0;
-        for (String stat : data.getStatKeys()) {
-            totalCost += getPendingCost(data, stat);
-        }
-        return totalCost;
-    }
-
-    public boolean upgradeStat(Player player, String statName) {
-        PlayerData data = getData(player.getUniqueId());
-        int pendingCount = data.getPendingStat(statName);
-        int currentVal = data.getStat(statName);
-
-        // Check if adding one more pending point exceeds available total points
-        int costOfNextPoint = getStatCost(currentVal + pendingCount);
-        int totalPendingCost = getTotalPendingCost(data);
-
-        if (data.getStatPoints() < (totalPendingCost + costOfNextPoint)) {
-            // Cannot afford even if the click is temporary
-            return false;
+        // ระบุตัวตน (Identify Attacker)
+        if (damagerEntity instanceof Player p) {
+            attackerPlayer = p;
+            isRanged = false;
+        } else if (damagerEntity instanceof Projectile proj) {
+            isRanged = true;
+            if (proj.getShooter() instanceof Player p) attackerPlayer = p;
         }
 
-        // Update pending count (no point deduction yet)
-        data.setPendingStat(statName, pendingCount + 1);
-        return true;
-    }
+        if (victim instanceof Player p) victimPlayer = p;
 
-    public boolean downgradeStat(Player player, String statName) {
-        PlayerData data = getData(player.getUniqueId());
-        int pendingCount = data.getPendingStat(statName);
+        StatManager stats = plugin.getStatManager();
 
-        if (pendingCount <= 0) {
-            return false; // Cannot reduce allocated stats (Req must be > 0)
-        }
-
-        // Update pending count (no point refund yet)
-        data.setPendingStat(statName, pendingCount - 1);
-        return true;
-    }
-
-    // NEW: Apply all pending stats and deduct cost
-    public void allocateStats(Player player) {
-        PlayerData data = getData(player.getUniqueId());
-        int totalCost = getTotalPendingCost(data);
-
-        if (data.getStatPoints() >= totalCost) {
-            for (String stat : data.getStatKeys()) {
-                int pendingCount = data.getPendingStat(stat);
-                if (pendingCount > 0) {
-                    data.setStat(stat, data.getStat(stat) + pendingCount);
+        // Mob attacking Player (Flee check for victim)
+        if (attackerPlayer == null) {
+            if (victimPlayer != null) {
+                int victimFlee = stats.getFlee(victimPlayer);
+                int mobHit = 50;
+                if (random.nextDouble() * 100 > (80 + mobHit - victimFlee)) {
+                    event.setCancelled(true);
+                    showFloatingText(victim.getLocation().add(0, 1.5, 0), "§7MISS");
+                    return;
                 }
             }
-            // Deduct cost and clear pending
-            data.setStatPoints(data.getStatPoints() - totalCost);
-            data.clearAllPendingStats();
-            plugin.getAttributeHandler().updatePlayerStats(player); // Recalculate Max HP/ASPD
-            player.sendMessage("§a[Allocate] Stats applied! Cost: " + totalCost);
+            return;
+        }
+
+        // ==========================================
+        // 1. Attack Calculation
+        // ==========================================
+        double statusAtk;
+        double damageBonusMultiplier;
+
+        if (isMagic) {
+            statusAtk = stats.getMagicAttack(attackerPlayer);
+            damageBonusMultiplier = stats.getMagicDamageBonus(attackerPlayer);
         } else {
-            player.sendMessage("§c[Allocate] Not enough points! Required: " + totalCost);
+            statusAtk = stats.getPhysicalAttack(attackerPlayer);
+            damageBonusMultiplier = stats.getPhysicalDamageBonus(attackerPlayer);
+        }
+
+        double finalDamage = (weaponDamage + statusAtk) * (1.0 + damageBonusMultiplier);
+
+        // ==========================================
+        // 2. Hit / Miss (Dodge System)
+        // ==========================================
+        if (!isMagic) {
+            int attackerHit = stats.getHit(attackerPlayer);
+            int victimFlee = (victimPlayer != null) ? stats.getFlee(victimPlayer) : 10;
+            if (isRanged) attackerHit += 20;
+
+            double hitChance = 80.0 + attackerHit - victimFlee;
+            if (hitChance < 5.0) hitChance = 5.0;
+
+            if (random.nextDouble() * 100 > hitChance) {
+                event.setCancelled(true);
+                showFloatingText(victim.getLocation().add(0, 1.5, 0), "§7MISS");
+                victim.getWorld().playSound(victim.getLocation(), Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1f, 2f);
+                if (damagerEntity instanceof Projectile proj) proj.remove();
+                return;
+            }
+        }
+
+        // ==========================================
+        // 3. Critical System
+        // ==========================================
+        boolean isCritical = false;
+        if (!isMagic) {
+            double critRate = stats.getCritChance(attackerPlayer);
+            if (random.nextDouble() * 100 < critRate) {
+                isCritical = true;
+                double critDmgMultiplier = stats.getCriticalDamage(attackerPlayer);
+                finalDamage *= critDmgMultiplier;
+            }
+        }
+
+        // ==========================================
+        // 4. Defense & Penetration
+        // ==========================================
+        if (victimPlayer != null) {
+            double defense;
+            double penetration = 0.0;
+
+            if (isMagic) {
+                defense = stats.getSoftMDef(victimPlayer);
+            } else {
+                defense = stats.getSoftDef(victimPlayer);
+                penetration = stats.getPhysicalPenetration(attackerPlayer);
+            }
+
+            double effectiveDef = defense * (1.0 - penetration);
+            finalDamage -= effectiveDef;
+        }
+
+        if (finalDamage < 1.0) finalDamage = 1.0;
+        event.setDamage(finalDamage);
+
+        if (isCritical) {
+            showFloatingText(victim.getLocation().add(0, 2, 0), "§c§lCRITICAL " + String.format("%.0f", finalDamage));
+            attackerPlayer.playSound(attackerPlayer.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1f, 1f);
+            attackerPlayer.getWorld().spawnParticle(Particle.CRIT, victim.getLocation().add(0, 1, 0), 20);
+
+            Title.Times times = Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(500), Duration.ofMillis(200));
+            attackerPlayer.showTitle(Title.title(Component.text(""), Component.text("§cCRITICAL!"), times));
         }
     }
 
-
-    public int getStatCost(int currentVal) {
-        int costBase = plugin.getConfig().getInt("stat-cost.base", 2);
-        int costDivisor = plugin.getConfig().getInt("stat-cost.divisor", 10);
-        int costStartLevel = plugin.getConfig().getInt("stat-cost.cost-start-level", 2);
-
-        if (currentVal < costStartLevel) return costBase;
-        return ((currentVal - 1) / costDivisor) + costBase;
-    }
-
-    // === FORMULAS (RESTORED) ===
-    public double getPhysicalAttack(Player player) {
-        PlayerData data = getData(player.getUniqueId());
-        return (data.getStat("STR") * 2.0) + (data.getStat("DEX") * 0.5) + (data.getStat("LUK") * 0.5) + data.getBaseLevel();
-    }
-
-    public double getMagicAttack(Player player) {
-        PlayerData data = getData(player.getUniqueId());
-        return (data.getStat("INT") * 2.0) + (data.getStat("DEX") * 0.5) + (data.getStat("LUK") * 0.5) + data.getBaseLevel();
-    }
-
-    public double getPhysicalDamageBonus(Player player) {
-        return (getStat(player.getUniqueId(), "STR") * 0.5) / 100.0;
-    }
-
-    public double getMagicDamageBonus(Player player) {
-        return (getStat(player.getUniqueId(), "INT") * 0.5) / 100.0;
-    }
-
-    public int getHit(Player player) {
-        PlayerData data = getData(player.getUniqueId());
-        int dex = getStat(player.getUniqueId(), "DEX");
-        return data.getBaseLevel() + dex;
-    }
-
-    public int getFlee(Player player) {
-        PlayerData data = getData(player.getUniqueId());
-        int agi = getStat(player.getUniqueId(), "AGI");
-        return data.getBaseLevel() + agi;
-    }
-
-    public double getAspdBonus(Player player) {
-        int agi = getStat(player.getUniqueId(), "AGI");
-        int dex = getStat(player.getUniqueId(), "DEX");
-        return (agi * 0.01) + (dex * 0.002);
-    }
-
-    public double getSoftDef(Player player) {
-        return getStat(player.getUniqueId(), "VIT") * 0.5;
-    }
-
-    public double getSoftMDef(Player player) {
-        return getStat(player.getUniqueId(), "INT") * 0.5;
-    }
-
-    public double getCritChance(Player player) {
-        return getStat(player.getUniqueId(), "LUK") * 0.3;
-    }
-
-    public double getPhysicalPenetration(Player player) {
-        return (getStat(player.getUniqueId(), "LUK") * 0.1) / 100.0;
-    }
-
-    public double getCriticalDamage(Player player) {
-        int str = getStat(player.getUniqueId(), "STR");
-        return 1.4 + ((str * 0.2) / 100.0);
-    }
-
-    public double calculatePower(Player player) {
-        PlayerData data = getData(player.getUniqueId());
-        double str = data.getStat("STR");
-        double intel = data.getStat("INT");
-        double agi = data.getStat("AGI");
-        double vit = data.getStat("VIT");
-        double dex = data.getStat("DEX");
-        double luk = data.getStat("LUK");
-        int baseLevel = data.getBaseLevel();
-
-        double coreStatPower = (str + intel) * 5.0;
-        double secondaryStatPower = (agi + vit + dex + luk) * 2.0;
-        double levelPower = baseLevel * 10.0;
-
-        return coreStatPower + secondaryStatPower + levelPower;
+    private void showFloatingText(Location loc, String text) {
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            org.bukkit.entity.ArmorStand stand = loc.getWorld().spawn(loc, org.bukkit.entity.ArmorStand.class);
+            stand.setVisible(false);
+            stand.setGravity(false);
+            stand.setMarker(true);
+            stand.setCustomName(text);
+            stand.setCustomNameVisible(true);
+            stand.setSmall(true);
+            plugin.getServer().getScheduler().runTaskLater(plugin, stand::remove, 20L);
+        });
     }
 }

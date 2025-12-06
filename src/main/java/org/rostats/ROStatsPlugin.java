@@ -17,7 +17,7 @@ import org.rostats.data.DataManager;
 import org.rostats.data.StatManager;
 import org.rostats.gui.GUIListener;
 import org.rostats.handler.AttributeHandler;
-import org.rostats.handler.CombatHandler;
+import org.rostats.handler.CombatHandler; // Import ถูกต้อง
 import org.rostats.handler.ManaManager;
 import org.rostats.hook.PAPIHook;
 
@@ -41,11 +41,11 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         this.dataManager = new DataManager(this);
         this.manaManager = new ManaManager(this);
         this.attributeHandler = new AttributeHandler(this);
-        this.combatHandler = new CombatHandler(this);
+        this.combatHandler = new CombatHandler(this); // Instantiation ถูกต้อง
 
         // 2. Register Events
         getServer().getPluginManager().registerEvents(attributeHandler, this);
-        getServer().getPluginManager().registerEvents(combatHandler, this);
+        getServer().getPluginManager().registerEvents(combatHandler, this); // Registration ถูกต้อง
         getServer().getPluginManager().registerEvents(manaManager, this);
         getServer().getPluginManager().registerEvents(new GUIListener(this), this);
         getServer().getPluginManager().registerEvents(this, this);

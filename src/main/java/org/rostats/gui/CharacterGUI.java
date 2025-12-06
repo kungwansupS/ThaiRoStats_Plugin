@@ -63,11 +63,12 @@ public class CharacterGUI {
         inv.setItem(1, createItem(Material.GOLDEN_HELMET, "§e§lJob/Class Info",
                 "§7อาชีพ: NOVICE (Placeholder)"
         ));
-        // Tabs (R0 C2-C3)
+
+        // Tabs (R0 C2, C3)
         inv.setItem(2, createTabItem(Tab.BASIC_INFO, activeTab, Material.DIAMOND, "§aBasic Info.", "§7หน้าจอหลักสำหรับอัพเกรดค่าสเตตัส"));
         inv.setItem(3, createTabItem(Tab.MORE_INFO, activeTab, Material.PAPER, "§fMore Info.", "§7แสดงรายละเอียดสถานะการต่อสู้ทั้งหมด"));
 
-        // R0 Presets (C4-C6)
+        // R0 Presets (C4-C6) - BG (4, 5, 6)
         inv.setItem(4, createItem(Material.LIME_DYE, "§aPreset 1", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 1"));
         inv.setItem(5, createItem(Material.BLUE_DYE, "§bPreset 2", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 2"));
         inv.setItem(6, createItem(Material.RED_DYE, "§cPreset 3", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 3"));
@@ -84,11 +85,14 @@ public class CharacterGUI {
         // R4 C6: Reset Select (Temp) (Slot 42)
         inv.setItem(42, createItem(Material.ANVIL, "§c§lReset Select", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อยกเลิกการอัพเกรดที่รอดำเนินการ"));
 
+        // R4 C8: Reset All (Slot 44)
+        inv.setItem(44, createItem(Material.REDSTONE, "§c§lReset All", "§7คลิกเพื่อเข้าสู่หน้ายืนยันการรีเซ็ตแต้มทั้งหมด"));
+
         // R5 C7: Allocate (Slot 52)
         inv.setItem(52, createItem(Material.LIME_CONCRETE, "§a§lAllocate", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อยืนยันการอัพเกรด Stat ทั้งหมด"));
     }
 
-    // R1 C6-C8: Basic Status Block (Slot 15) - Using R1 C6-C8 area for visual space
+    // R1 C6: Basic Status Block (Slot 15) - Uses C6-C8 space
     private void displayComprehensiveInfoBlock(Inventory inv, Player player, PlayerData data) {
         StatManager stats = plugin.getStatManager();
         double maxHP = player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
@@ -97,17 +101,24 @@ public class CharacterGUI {
         double power = stats.calculatePower(player);
         double maxPower = 5000;
 
+        // Slot 15 (R1 C6) for Comprehensive Bar Status
         inv.setItem(15, createItem(Material.IRON_CHESTPLATE, "§e§lสถานะพื้นฐาน (Basic Status)",
+                // HP
                 "§cHP: §f" + String.format("%.0f/%.0f", currentHP, maxHP),
                 createBar(currentHP, maxHP, "HP"),
+                // SP
                 "§bSP: §f" + String.format("%.0f/%.0f", data.getCurrentSP(), data.getMaxSP()),
                 createBar(data.getCurrentSP(), data.getMaxSP(), "SP"),
+                // Base Lv + EXP
                 "§7Base Lv§a" + baseLevel + " §8(" + data.getBaseExp() + "/" + data.getBaseExpReq() + ")",
                 createBar(data.getBaseExp(), data.getBaseExpReq(), "BASE_LV"),
+                // Job Lv + EXP
                 "§7Job Lv§a" + data.getJobLevel() + " §8(" + data.getJobExp() + "/" + data.getJobExpReq() + ")",
                 createBar(data.getJobExp(), data.getJobExpReq(), "JOB_LV"),
+                // Stamina
                 "§7Stamina: §a100/100",
                 createBar(100.0, 100.0, "STAMINA"),
+                // Power
                 "§6Power: §f" + String.format("%.0f", power),
                 createBar(power, maxPower, "POWER")
         ));
@@ -121,6 +132,7 @@ public class CharacterGUI {
         // R4: + Button (Slots 36-41)
         // R5: - Button (Slots 45-50)
 
+        // Column 0-5
         createStatRow(inv, player, data, "STR", Material.IRON_SWORD, 9, 18, 27, 36, 45, "§cSTR");
         createStatRow(inv, player, data, "AGI", Material.FEATHER, 10, 19, 28, 37, 46, "§bAGI");
         createStatRow(inv, player, data, "VIT", Material.IRON_CHESTPLATE, 11, 20, 29, 38, 47, "§aVIT");
@@ -138,17 +150,20 @@ public class CharacterGUI {
         combinedLore.add("§cMax HP: §f" + String.format("%.0f", player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue()) + " §7| §bMax SP: §f" + String.format("%.0f", data.getMaxSP()));
         combinedLore.add("§cATK (Physical): §f" + String.format("%.0f", stats.getPhysicalAttack(player)) + " §7| §dMATK (Magic): §f" + String.format("%.0f", stats.getMagicAttack(player)));
         combinedLore.add("§aDEF (Soft): §f" + String.format("%.0f", stats.getSoftDef(player)) + " §7| §bMDEF (Soft): §f" + String.format("%.0f", stats.getSoftMDef(player)));
+        // Refine ATK/DEF placeholders
+        combinedLore.add("§cRefine ATK: §f0 §7| §aRefine DEF: §f0");
+        combinedLore.add("§dRefine MATK: §f0 §7| §bRefine MDEF: §f0");
+        combinedLore.add("§cHP Recovery: §f0 §7| §bSP Recovery: §f" + String.format("%.1f", currentSPRegen));
         combinedLore.add("§6HIT: §f" + stats.getHit(player) + " §7| §bFLEE: §f" + stats.getFlee(player));
-        combinedLore.add("§bSP Recovery: §f" + String.format("%.1f", currentSPRegen) + " / 2s");
         combinedLore.add("§7---");
 
         combinedLore.add("§f§l-- ข้อมูลเชิงลึก --");
         combinedLore.add("§fASPD: §f" + String.format("%.0f%%", (1.0 + stats.getAspdBonus(player)) * 100) + " §7| §eCRIT Rate: §f" + String.format("%.1f%%", stats.getCritChance(player)));
         combinedLore.add("§7P. Penetration: §f" + String.format("%.1f%%", stats.getPhysicalPenetration(player) * 100) + " §7| §cCrit DMG: §f" + String.format("%.1f", stats.getCriticalDamage(player)) + "x");
-        combinedLore.add("§8(Refine ATK/DEF, Cast Time, etc. จะเพิ่มในภายหลัง)");
+        combinedLore.add("§8(Cast Time, Heal Inc., etc. จะเพิ่มในภายหลัง)");
 
-        // Set More Info block to R2 C1 (Slot 19)
-        inv.setItem(19, createItem(Material.PAPER, "§f§lDetailed Status", combinedLore.toArray(new String[0])));
+        // Slot 15 (R1 C6) is used for More Info details
+        inv.setItem(15, createItem(Material.PAPER, "§f§lDetailed Status", combinedLore.toArray(new String[0])));
     }
 
     private void displayResetConfirm(Inventory inv, Player player, PlayerData data) {
@@ -199,7 +214,7 @@ public class CharacterGUI {
         ));
 
         // 2. Bonus Slot (Slot: R2)
-        inv.setItem(bonusSlot, createItem(Material.DIAMOND, "§b§lBonus",
+        inv.setItem(bonusSlot, createItem(Material.DIAMOND, "§b§lBonus (" + statKey + ")", // FIX: Specify Stat in Bonus Name
                 "§7Bonus Stats (จากอุปกรณ์/บัฟ): §b" + bonusVal,
                 "§8(ยังไม่เปิดใช้งาน)"));
 
