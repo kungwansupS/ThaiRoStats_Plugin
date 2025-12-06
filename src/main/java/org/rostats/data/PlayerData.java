@@ -4,6 +4,7 @@ import org.rostats.ROStatsPlugin;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set; // Import Set
 
 public class PlayerData {
     private int baseLevel = 1;
@@ -13,6 +14,7 @@ public class PlayerData {
     private int resetCount = 0;
 
     private final Map<String, Integer> stats = new HashMap<>();
+    private final Map<String, Integer> pendingStats = new HashMap<>();
     private final ROStatsPlugin plugin;
 
     public PlayerData(ROStatsPlugin plugin) {
@@ -20,6 +22,9 @@ public class PlayerData {
         stats.put("STR", 1); stats.put("AGI", 1); stats.put("VIT", 1);
         stats.put("INT", 1); stats.put("DEX", 1); stats.put("LUK", 1);
         calculateMaxSP();
+        // Initialize pending stats to 0
+        pendingStats.put("STR", 0); pendingStats.put("AGI", 0); pendingStats.put("VIT", 0);
+        pendingStats.put("INT", 0); pendingStats.put("DEX", 0); pendingStats.put("LUK", 0);
     }
 
     public int getStat(String key) {
@@ -29,6 +34,29 @@ public class PlayerData {
     public void setStat(String key, int val) {
         stats.put(key.toUpperCase(), val);
         calculateMaxSP();
+    }
+
+    // NEW FIX: Public getter for stat keys
+    public Set<String> getStatKeys() {
+        return stats.keySet();
+    }
+
+    // NEW: Pending Stat Accessors
+    public int getPendingStat(String key) {
+        return pendingStats.getOrDefault(key.toUpperCase(), 0);
+    }
+
+    public void setPendingStat(String key, int count) {
+        pendingStats.put(key.toUpperCase(), count);
+    }
+
+    public void clearPendingStats(String key) {
+        pendingStats.put(key.toUpperCase(), 0);
+    }
+
+    public void clearAllPendingStats() {
+        pendingStats.put("STR", 0); pendingStats.put("AGI", 0); pendingStats.put("VIT", 0);
+        pendingStats.put("INT", 0); pendingStats.put("DEX", 0); pendingStats.put("LUK", 0);
     }
 
     public void addBaseExp(long amount, UUID playerUUID) {
@@ -60,7 +88,7 @@ public class PlayerData {
     }
 
     public double getMaxSP() {
-        int intel = getStat("INT");
+        int intel = getStat("INT") + getPendingStat("INT"); // Include pending INT in calculation
         double baseSP = 20 + (baseLevel * 5);
         double intBonus = (intel * 2) * (1 + (intel / 100.0));
         return (baseSP + intBonus);
@@ -73,7 +101,7 @@ public class PlayerData {
     public void regenSP() {
         double max = getMaxSP();
         if (this.currentSP < max) {
-            int intel = getStat("INT");
+            int intel = getStat("INT"); // Regen should use current stats, not pending
             double regen = 1 +
                     (intel / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0)) +
                     (max / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0));
@@ -90,6 +118,7 @@ public class PlayerData {
         for (int i = 1; i < baseLevel; i++) totalPoints += getStatPointsGain(i);
 
         this.statPoints = totalPoints;
+        clearAllPendingStats(); // Clear pending stats
         calculateMaxSP();
         this.currentSP = getMaxSP();
     }

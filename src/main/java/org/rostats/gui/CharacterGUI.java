@@ -34,15 +34,11 @@ public class CharacterGUI {
         // 1. Header & Tabs (Common to all screens)
         displayHeader(inv, player, tab, data);
 
-        // Background & Filler (Simplified)
+        // Background & Filler
         ItemStack bg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
         for (int i = 0; i < 54; i++) {
-            if (i < 9 || i > 17 && i < 27 || i > 35 && i < 42 || i > 43 && i < 45 || i > 50 && i < 52) continue; // Skip custom slots
             if (inv.getItem(i) == null) inv.setItem(i, bg);
         }
-        inv.setItem(23, bg); // Custom slot 23 for Bonus
-        inv.setItem(32, bg); // Custom slot 32 for Req
-        inv.setItem(48, bg); // Custom slot 48 for + button
 
         // 2. Content Display
         if (tab == Tab.BASIC_INFO) {
@@ -54,57 +50,54 @@ public class CharacterGUI {
             displayResetConfirm(inv, player, data);
         }
 
-        // 3. Controls
-        inv.setItem(8, createItem(Material.BARRIER, "§c§lปิดเมนู", "§7คลิกเพื่อปิดหน้าจอสถานะ")); // R0 Close
-        inv.setItem(53, createItem(Material.BARRIER, "§c§lปิดเมนู", "§7คลิกเพื่อปิดหน้าจอสถานะ")); // R5 Close
-
         player.openInventory(inv);
     }
 
     // --- Header & Layout Helpers ---
 
     private void displayHeader(Inventory inv, Player player, Tab activeTab, PlayerData data) {
-        // R0: Header
+        // R0: Header (Info, Job, Tabs, Exit)
         inv.setItem(0, createItem(Material.PLAYER_HEAD, "§e§lCharacter Details",
-                "§7ชื่อ: §f" + player.getName(),
-                "§7ยศ/ตำแหน่ง: §f(ยังไม่มีระบบยศ)",
-                "§7Emblem: §f(ยังไม่มีระบบ Emblem)"
+                "§7ชื่อ: §f" + player.getName()
         ));
         inv.setItem(1, createItem(Material.GOLDEN_HELMET, "§e§lJob/Class Info",
-                "§7อาชีพ: NOVICE (Placeholder)",
-                "§8(ระบบอาชีพปิดใช้งาน)"
+                "§7อาชีพ: NOVICE (Placeholder)"
         ));
-        inv.setItem(2, createItem(Material.PAPER, "§e§lPlayer Info",
-                "§7Base Level: §a" + data.getBaseLevel(),
-                "§7HP: §c" + String.format("%.0f/%.0f", player.getHealth(), player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue()),
-                "§7SP: §b" + String.format("%.0f/%.0f", data.getCurrentSP(), data.getMaxSP())
-        ));
+        // Tabs (R0 C2-C3)
+        inv.setItem(2, createTabItem(Tab.BASIC_INFO, activeTab, Material.DIAMOND, "§aBasic Info.", "§7หน้าจอหลักสำหรับอัพเกรดค่าสเตตัส"));
+        inv.setItem(3, createTabItem(Tab.MORE_INFO, activeTab, Material.PAPER, "§fMore Info.", "§7แสดงรายละเอียดสถานะการต่อสู้ทั้งหมด"));
 
-        // R1: Tabs & Presets
-        inv.setItem(9, createTabItem(Tab.BASIC_INFO, activeTab, Material.DIAMOND, "§aข้อมูล Stat (Basic)", "§7หน้าจอหลักสำหรับอัพเกรดค่าสเตตัส"));
-        inv.setItem(10, createTabItem(Tab.MORE_INFO, activeTab, Material.PAPER, "§fข้อมูล Combat (More)", "§7แสดงรายละเอียดสถานะการต่อสู้ทั้งหมด"));
-        inv.setItem(11, createTabItem(Tab.RESET_CONFIRM, activeTab, Material.REDSTONE, "§cรีเซ็ตแต้ม (Reset Point)", "§7ทำการรีเซ็ตค่าสเตตัสที่อัพเกรดมาทั้งหมด"));
+        // R0 Presets (C4-C6)
+        inv.setItem(4, createItem(Material.LIME_DYE, "§aPreset 1", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 1"));
+        inv.setItem(5, createItem(Material.BLUE_DYE, "§bPreset 2", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 2"));
+        inv.setItem(6, createItem(Material.RED_DYE, "§cPreset 3", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 3"));
 
-        inv.setItem(13, createItem(Material.LIME_DYE, "§aPreset 1", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 1"));
-        inv.setItem(14, createItem(Material.BLUE_DYE, "§bPreset 2", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 2"));
-        inv.setItem(15, createItem(Material.RED_DYE, "§cPreset 3", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อโหลด Stat Preset 3"));
+        // R0 C8: Exit
+        inv.setItem(8, createItem(Material.BARRIER, "§c§lX", "§7คลิกเพื่อปิดหน้าจอสถานะ"));
 
-        // R4/R5 Controls
-        inv.setItem(42, createItem(Material.GOLD_NUGGET, "§6§lแต้มคงเหลือ", "§7แต้มที่สามารถใช้อัพเกรด Stat ได้"));
-        inv.setItem(43, createItem(Material.REDSTONE_BLOCK, "§c§lรีเซ็ตชั่วคราว", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อยกเลิกการอัพเกรดที่รอดำเนินการ"));
-        inv.setItem(52, createItem(Material.LIME_CONCRETE, "§a§lยืนยันการอัพเกรด", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อยืนยันการอัพเกรด Stat ทั้งหมด"));
+        // R3 C6: Points Left (Slot 33)
+        inv.setItem(33, createItem(Material.GOLD_NUGGET, "§6§lแต้มคงเหลือ", "§7แต้มที่สามารถใช้อัพเกรด Stat ได้: §e" + data.getStatPoints()));
+
+        // R3 C7: Reset Point (Slot 34)
+        inv.setItem(34, createItem(Material.REDSTONE_BLOCK, "§c§lReset Point", "§7คลิกเพื่อเข้าสู่หน้ายืนยันการรีเซ็ตแต้มทั้งหมด"));
+
+        // R4 C6: Reset Select (Temp) (Slot 42)
+        inv.setItem(42, createItem(Material.ANVIL, "§c§lReset Select", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อยกเลิกการอัพเกรดที่รอดำเนินการ"));
+
+        // R5 C7: Allocate (Slot 52)
+        inv.setItem(52, createItem(Material.LIME_CONCRETE, "§a§lAllocate", "§7(ยังไม่เปิดใช้งาน) คลิกเพื่อยืนยันการอัพเกรด Stat ทั้งหมด"));
     }
 
-    // NEW: Comprehensive Info Block (Slot 12)
+    // R1 C6-C8: Basic Status Block (Slot 15) - Using R1 C6-C8 area for visual space
     private void displayComprehensiveInfoBlock(Inventory inv, Player player, PlayerData data) {
         StatManager stats = plugin.getStatManager();
         double maxHP = player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
         double currentHP = player.getHealth();
         int baseLevel = data.getBaseLevel();
         double power = stats.calculatePower(player);
-        double maxPower = 5000; // Placeholder Max Power for bar scale
+        double maxPower = 5000;
 
-        inv.setItem(12, createItem(Material.IRON_CHESTPLATE, "§e§lสถานะพื้นฐาน (Basic Status)",
+        inv.setItem(15, createItem(Material.IRON_CHESTPLATE, "§e§lสถานะพื้นฐาน (Basic Status)",
                 "§cHP: §f" + String.format("%.0f/%.0f", currentHP, maxHP),
                 createBar(currentHP, maxHP, "HP"),
                 "§bSP: §f" + String.format("%.0f/%.0f", data.getCurrentSP(), data.getMaxSP()),
@@ -114,7 +107,7 @@ public class CharacterGUI {
                 "§7Job Lv§a" + data.getJobLevel() + " §8(" + data.getJobExp() + "/" + data.getJobExpReq() + ")",
                 createBar(data.getJobExp(), data.getJobExpReq(), "JOB_LV"),
                 "§7Stamina: §a100/100",
-                createBar(100.0, 100.0, "STAMINA"), // Stamina bar placeholder
+                createBar(100.0, 100.0, "STAMINA"),
                 "§6Power: §f" + String.format("%.0f", power),
                 createBar(power, maxPower, "POWER")
         ));
@@ -122,20 +115,24 @@ public class CharacterGUI {
 
 
     private void displayAllocationMatrix(Inventory inv, Player player, PlayerData data) {
-        // Stat Row Details (R4: Bonus, R5: Req/+1 Button) - Call createStatRow to set R4/R5 items
-        createStatRow(inv, player, data, "STR", Material.IRON_SWORD, 27, 36, 45, "§cSTR (Strength)");
-        createStatRow(inv, player, data, "AGI", Material.FEATHER, 28, 37, 46, "§bAGI (Agility)");
-        createStatRow(inv, player, data, "VIT", Material.IRON_CHESTPLATE, 29, 38, 47, "§aVIT (Vitality)");
-        createStatRow(inv, player, data, "INT", Material.ENCHANTED_BOOK, 30, 39, 48, "§dINT (Intelligence)");
-        createStatRow(inv, player, data, "DEX", Material.BOW, 31, 40, 49, "§6DEX (Dexterity)");
-        createStatRow(inv, player, data, "LUK", Material.RABBIT_FOOT, 32, 41, 50, "§eLUK (Luck)");
+        // R1: Stats (Slots 9-14)
+        // R2: Bonus (Slots 18-23)
+        // R3: Req (Slots 27-32)
+        // R4: + Button (Slots 36-41)
+        // R5: - Button (Slots 45-50)
+
+        createStatRow(inv, player, data, "STR", Material.IRON_SWORD, 9, 18, 27, 36, 45, "§cSTR");
+        createStatRow(inv, player, data, "AGI", Material.FEATHER, 10, 19, 28, 37, 46, "§bAGI");
+        createStatRow(inv, player, data, "VIT", Material.IRON_CHESTPLATE, 11, 20, 29, 38, 47, "§aVIT");
+        createStatRow(inv, player, data, "INT", Material.ENCHANTED_BOOK, 12, 21, 30, 39, 48, "§dINT");
+        createStatRow(inv, player, data, "DEX", Material.BOW, 13, 22, 31, 40, 49, "§6DEX");
+        createStatRow(inv, player, data, "LUK", Material.RABBIT_FOOT, 14, 23, 32, 41, 50, "§eLUK");
     }
 
     private void displayMoreInfo(Inventory inv, Player player, PlayerData data) {
         StatManager stats = plugin.getStatManager();
         double currentSPRegen = 1 + (data.getStat("INT") / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0)) + (data.getMaxSP() / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0));
 
-        // Combine Basic and Advanced Stats into Lore (Slot 19)
         List<String> combinedLore = new ArrayList<>();
         combinedLore.add("§f§l-- ข้อมูลพื้นฐาน --");
         combinedLore.add("§cMax HP: §f" + String.format("%.0f", player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue()) + " §7| §bMax SP: §f" + String.format("%.0f", data.getMaxSP()));
@@ -150,6 +147,7 @@ public class CharacterGUI {
         combinedLore.add("§7P. Penetration: §f" + String.format("%.1f%%", stats.getPhysicalPenetration(player) * 100) + " §7| §cCrit DMG: §f" + String.format("%.1f", stats.getCriticalDamage(player)) + "x");
         combinedLore.add("§8(Refine ATK/DEF, Cast Time, etc. จะเพิ่มในภายหลัง)");
 
+        // Set More Info block to R2 C1 (Slot 19)
         inv.setItem(19, createItem(Material.PAPER, "§f§lDetailed Status", combinedLore.toArray(new String[0])));
     }
 
@@ -159,20 +157,7 @@ public class CharacterGUI {
         String itemReq = plugin.getConfig().getString("reset-system.reset-item", "NETHER_STAR");
         Material resetItem = Material.getMaterial(itemReq);
 
-        // Remove previous items and clear area
-        ItemStack bg = createItem(Material.GRAY_STAINED_GLASS_PANE, " ");
-        for (int i = 18; i <= 36; i++) {
-            if (i == 29 || i == 31) continue;
-            inv.setItem(i, bg);
-        }
-        inv.setItem(12, bg);
-        inv.setItem(20, bg);
-        inv.setItem(22, bg);
-        inv.setItem(24, bg);
-        inv.setItem(38, bg);
-
-
-        // Confirmation Button (Slot 29 - Center of R4)
+        // Confirmation Button (Slot 29)
         inv.setItem(29, createItem(Material.LIME_CONCRETE, "§a§l[ยืนยัน] รีเซ็ตสเตตัส",
                 "§cคำเตือน: การกระทำนี้ไม่สามารถย้อนกลับได้!",
                 "§7---",
@@ -183,51 +168,61 @@ public class CharacterGUI {
                 "§eคลิกเพื่อดำเนินการต่อ"
         ));
 
-        // Cancel Button (Slot 31 - Near center)
+        // Cancel Button (Slot 31)
         inv.setItem(31, createItem(Material.RED_CONCRETE, "§c§l[ยกเลิก]",
                 "§7คลิกเพื่อกลับไปหน้าจอ Basic Info",
                 "§eคลิกเพื่อยกเลิก"));
 
-        // Slot 12 was the info block in the old layout. Ensure it's empty or filler.
+        // Clear R1 C3-C5 area
         inv.setItem(12, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
+        inv.setItem(13, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
+        inv.setItem(14, createItem(Material.GRAY_STAINED_GLASS_PANE, " "));
     }
 
-    // --- Stat Row Helper (R3, R4, R5) ---
+    // --- Stat Row Helper (R1, R2, R3, R4, R5) ---
 
-    private void createStatRow(Inventory inv, Player player, PlayerData data, String statKey, Material mat, int statSlot, int bonusSlot, int reqSlot, String statFullName) {
+    private void createStatRow(Inventory inv, Player player, PlayerData data, String statKey, Material mat, int statSlot, int bonusSlot, int reqSlot, int addSlot, int minusSlot, String statFullName) {
         StatManager stats = plugin.getStatManager();
         int currentVal = data.getStat(statKey);
-        int bonusVal = 0; // Placeholder for Bonus
-        int totalVal = currentVal + bonusVal;
-        int cost = stats.getStatCost(currentVal);
-        boolean canAfford = data.getStatPoints() >= cost;
-        String costColor = canAfford ? "§a" : "§c";
+        int pendingCount = data.getPendingStat(statKey);
 
-        // 1. Stat Icon & Value (Slot: R3) - Update lore for this item
-        // The item is already initialized in displayAllocationMatrix, we only update lore here.
-        ItemStack statItem = inv.getItem(statSlot);
-        if (statItem != null) {
-            ItemMeta meta = statItem.getItemMeta();
-            List<Component> loreList = new ArrayList<>();
-            loreList.add(Component.text("§7Stats (แต้มที่อัพ): §e" + currentVal));
-            loreList.add(Component.text("§7Total: §e" + totalVal));
-            loreList.add(Component.text("§7หน้าที่: [TBD]")); // Placeholder for description
-            meta.lore(loreList);
-            statItem.setItemMeta(meta);
-            inv.setItem(statSlot, statItem);
-        }
+        int bonusVal = 0;
+        int totalVal = currentVal + bonusVal + pendingCount;
 
-        // 2. Bonus Slot (Slot: R4) - Bonus
+        int costNextPoint = stats.getStatCost(currentVal + pendingCount);
+
+        // 1. Stat Icon & Value (Slot: R1)
+        inv.setItem(statSlot, createItem(mat, statFullName,
+                "§7Stats (แต้มที่อัพ): §e" + currentVal + (pendingCount > 0 ? " §a(+" + pendingCount + ")" : ""),
+                "§7Total: §e" + totalVal,
+                "§7หน้าที่: [TBD]"
+        ));
+
+        // 2. Bonus Slot (Slot: R2)
         inv.setItem(bonusSlot, createItem(Material.DIAMOND, "§b§lBonus",
                 "§7Bonus Stats (จากอุปกรณ์/บัฟ): §b" + bonusVal,
                 "§8(ยังไม่เปิดใช้งาน)"));
 
-        // 3. Req (+1 Button) (Slot: R5) - Req/Upgrade
-        inv.setItem(reqSlot, createItem(Material.GREEN_STAINED_GLASS_PANE, "§a§l+1 Point",
-                "§7ค่าใช้จ่าย: " + costColor + cost + " แต้ม",
+        // 3. Req Slot (Slot: R3) - Displays cumulative cost
+        inv.setItem(reqSlot, createItem(Material.IRON_NUGGET, "§6§lRequired Points",
+                "§7แต้มรอดำเนินการ: §e" + pendingCount,
+                "§7ค่าใช้จ่ายรวม: §c" + stats.getPendingCost(data, statKey)
+        ));
+
+        // 4. + Button (Slot: R4)
+        inv.setItem(addSlot, createItem(Material.GREEN_STAINED_GLASS_PANE, "§a§l+" + statKey,
+                "§7แต้มที่ต้องการ: §c" + costNextPoint + " แต้ม",
                 "§7---",
                 "§eคลิกซ้าย: §7เพิ่ม 1 แต้ม",
                 "§eคลิกขวา: §7เพิ่ม 10 แต้ม"
+        ));
+
+        // 5. - Button (Slot: R5)
+        inv.setItem(minusSlot, createItem(Material.RED_STAINED_GLASS_PANE, "§c§l-" + statKey,
+                "§7แต้มที่คืน: §a" + (pendingCount > 0 ? stats.getStatCost(currentVal + pendingCount - 1) : 0),
+                "§7---",
+                "§eคลิกซ้าย: §7ลด 1 แต้ม",
+                "§eคลิกขวา: §7ลด 10 แต้ม"
         ));
     }
 
@@ -250,7 +245,7 @@ public class CharacterGUI {
 
         if (max == 0) return empty + "██████████";
 
-        double effectiveCurrent = Math.min(current, max); // Cap current value
+        double effectiveCurrent = Math.min(current, max);
         int fillAmount = (int) Math.round((effectiveCurrent / max) * length);
 
         StringBuilder bar = new StringBuilder();
