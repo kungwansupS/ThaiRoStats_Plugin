@@ -1,5 +1,7 @@
 package org.rostats.data;
 
+import org.bukkit.Bukkit; // เพิ่ม import สำหรับ Bukkit
+import org.bukkit.entity.Player; // เพิ่ม import สำหรับ Player
 import org.rostats.ROStatsPlugin; // Import ถูกต้อง
 import java.util.HashMap;
 import java.util.Map;
@@ -277,6 +279,12 @@ public class PlayerData {
             plugin.showFloatingText(playerUUID, "§cMAX BASE LEVEL REACHED!", 0.5);
         }
 
+        // NEW: Update Base EXP Boss Bar
+        Player player = Bukkit.getPlayer(playerUUID);
+        if (player != null) {
+            plugin.getManaManager().updateBaseExpBar(player);
+        }
+
         calculateMaxSP();
     }
 
@@ -307,6 +315,12 @@ public class PlayerData {
         // If we are at the max job level after processing EXP, notify the player.
         if (this.jobLevel >= maxJobLevel) {
             plugin.showFloatingText(playerUUID, "§cMAX JOB LEVEL REACHED!", 0.0);
+        }
+
+        // NEW: Update Job EXP Boss Bar
+        Player player = Bukkit.getPlayer(playerUUID);
+        if (player != null) {
+            plugin.getManaManager().updateJobExpBar(player);
         }
     }
 
