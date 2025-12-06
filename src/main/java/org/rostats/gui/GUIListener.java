@@ -32,9 +32,11 @@ public class GUIListener implements Listener {
         String name = PlainTextComponentSerializer.plainText().serialize(event.getCurrentItem().displayName());
         int slot = event.getSlot();
 
-        // 1. Handle Tab Clicks (R0 C2, C3)
+        // 1. Handle Tab Clicks (R0 C2, C3, C4, C5)
         if (slot == 2) new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
-        else if (slot == 3) new CharacterGUI(plugin).open(player, Tab.MORE_INFO);
+        else if (slot == 3) new CharacterGUI(plugin).open(player, Tab.GENERAL); // FIX: Changed from MORE_INFO
+        else if (slot == 4) new CharacterGUI(plugin).open(player, Tab.ADVANCED); // NEW: Advanced Tab
+        else if (slot == 5) new CharacterGUI(plugin).open(player, Tab.SPECIAL); // NEW: Special Tab
         else if (slot == 34) new CharacterGUI(plugin).open(player, Tab.RESET_CONFIRM); // Reset Point button
         else if (slot == 44) new CharacterGUI(plugin).open(player, Tab.RESET_CONFIRM); // Reset All Button
 

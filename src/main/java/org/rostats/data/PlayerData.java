@@ -126,6 +126,7 @@ public class PlayerData {
     public double getCritDmgResPercent() { return critDmgResPercent; }
     public double getIgnorePDefFlat() { return ignorePDefFlat; }
     public double getIgnoreMDefFlat() { return ignoreMDefFlat; }
+
     // --- Core Methods (Modified) ---
     public int getStat(String key) { return stats.getOrDefault(key.toUpperCase(), 1); }
     public void setStat(String key, int val) { stats.put(key.toUpperCase(), val); calculateMaxSP(); }
@@ -138,12 +139,15 @@ public class PlayerData {
 
     public void addBaseExp(long amount, UUID playerUUID) {
         long expGained = amount;
+
         plugin.showFloatingText(playerUUID, "§9§l+" + expGained + " Base EXP");
+
         this.baseExp += amount;
         while (this.baseExp >= getExpReq(this.baseLevel)) {
             this.baseExp -= getExpReq(this.baseLevel);
             this.baseLevel++;
             this.statPoints += getStatPointsGain(this.baseLevel);
+
             plugin.showFloatingText(playerUUID, "§e§l+" + 100 + " Job EXP (Placeholder)");
         }
         calculateMaxSP();
