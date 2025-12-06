@@ -18,12 +18,11 @@ public class DataManager {
         if (!folder.exists()) folder.mkdirs();
     }
 
-    // UPDATE: loadPlayerData (now uses StatManager method to create PlayerData with plugin instance)
+    // UPDATE: loadPlayerData (now calls centralized updateAllStats which handles item bonuses)
     public void loadPlayerData(Player player) {
         UUID uuid = player.getUniqueId();
-        // **IMPORTANT**: StatManager's getData must now create PlayerData using the plugin instance.
-        // If StatManager does not have a reference to the plugin, PlayerData cannot access config.
-        // Assuming StatManager is updated to StatManager(plugin) and getData handles PlayerData(plugin) creation.
+
+        // FIX: Get PlayerData from StatManager, not DataManager.
         PlayerData data = plugin.getStatManager().getData(uuid);
 
         // ... (loading logic remains the same, removing Job/Job Level references) ...
@@ -58,10 +57,11 @@ public class DataManager {
         } else {
             savePlayerData(player);
         }
-        plugin.getAttributeHandler().updatePlayerStats(player);
-        plugin.getManaManager().updateBar(player);
-        plugin.getManaManager().updateBaseExpBar(player); // **เพิ่มการอัปเดต Base EXP Bar**
-        plugin.getManaManager().updateJobExpBar(player);  // **เพิ่มการอัปเดต Job EXP Bar**
+
+        // MODIFIED: Use centralized update method which applies item bonuses and then updates Bukkit attributes/bars
+        plugin.updateAllStats(player);
+        plugin.getManaManager().updateBaseExpBar(player); // **EXP bars are updated here since there is no item bonus dependency**
+        plugin.getManaManager().updateJobExpBar(player);  // **EXP bars are updated here since there is no item bonus dependency**
     }
 
     public void savePlayerData(Player player) {
