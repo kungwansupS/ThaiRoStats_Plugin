@@ -33,30 +33,27 @@ public class AttributeHandler implements Listener {
         int baseLevel = data.getBaseLevel();
 
         // 1. VIT -> Max HP
-        double baseHealth = 20.0 + (baseLevel * 2.0);
-        double vitMultiplier = 1.0 + (vit / 100.0);
-
-        // ลบ: Job Multiplier
-        // ลบ: double jobMultiplier = 1.0 + data.getJob().getHpMultiplier();
-
-        // ปรับ: double finalMaxHealth = baseHealth * vitMultiplier * jobMultiplier;
-        double finalMaxHealth = baseHealth * vitMultiplier;
+        // ใช้สูตร MaxHP ที่ถูกแก้ไขใน PlayerData.java
+        double finalMaxHealth = data.getMaxHP();
 
         if (finalMaxHealth > 2048.0) finalMaxHealth = 2048.0;
         setAttribute(player, Attribute.GENERIC_MAX_HEALTH, finalMaxHealth);
 
         // 2. AGI -> Movement Speed
-        double speedBonus = agi * 0.002;
-        double finalSpeed = 0.1 + speedBonus;
+        // ใช้ BaseMSPD + MSpdPercent
+        double speedBonus = data.getBaseMSPD() + (data.getMSpdPercent() / 100.0);
+        double finalSpeed = speedBonus;
         if (finalSpeed > 1.0) finalSpeed = 1.0;
         setAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, finalSpeed);
 
         // 3. ASPD
-        double aspdBonus = (agi * 0.01) + (dex * 0.002);
-        setAttribute(player, Attribute.GENERIC_ATTACK_SPEED, 4.0 * (1.0 + aspdBonus));
+        // ใช้ค่า ASPD Multiplier ที่ถูกแก้ไขใน StatManager.java
+        double aspdMultiplier = stats.getAspdBonus(player);
+        setAttribute(player, Attribute.GENERIC_ATTACK_SPEED, 4.0 * aspdMultiplier);
 
         // 4. Soft DEF
-        double softDef = vit * 0.5;
+        // ใช้สูตร SoftPDEF ที่ถูกแก้ไขใน StatManager.java (VIT * 0.5 + AGI * 0.2)
+        double softDef = stats.getSoftDef(player);
         setAttribute(player, Attribute.GENERIC_ARMOR, softDef);
 
         if (player.getHealth() > finalMaxHealth) {

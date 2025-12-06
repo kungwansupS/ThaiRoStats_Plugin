@@ -26,7 +26,7 @@ public class CombatHandler implements Listener {
     private final ROStatsPlugin plugin;
     private final Random random = new Random();
     private final double SKILL_POWER = 1.0; // Default skill power for basic attacks
-    private final double BASE_CRIT = 1.5;
+    private final double BASE_CRIT = 1.5; // Keeping old BASE_CRIT as constant, but unused in new formula
     private final int K_DEFENSE = 400; // Constant K for defense formula (Section G)
 
     public CombatHandler(ROStatsPlugin plugin) {
@@ -78,13 +78,13 @@ public class CombatHandler implements Listener {
         // COMBAT PIPELINE (Section B)
         // ==========================================
 
-        // 1. HIT check (Hit vs Flee)
+        // 1. HIT check (Hit vs Flee) - Corrected to use new formula
         if (!isMagic) {
             int attackerHit = stats.getHit(attackerPlayer);
             int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 10;
 
-            // Formula: HitRate = 0.75 + (AttackerHIT - DefenderFLEE) / 1000
-            double hitRate = 0.75 + (attackerHit - defenderFlee) / 1000.0;
+            // Formula: ChanceToHit = clamp(Hit / (Hit + TargetFLEE), 5%, 95%)
+            double hitRate = (double) attackerHit / (attackerHit + defenderFlee);
             hitRate = Math.max(0.05, Math.min(0.95, hitRate));
 
             if (random.nextDouble() > hitRate) {
@@ -215,22 +215,14 @@ public class CombatHandler implements Listener {
     // COMBAT HELPER METHODS
     // ==========================================
 
-    // Section G: Defense Pipeline
+    // Section G: Defense Pipeline - Corrected
     private double applyPhysicalDEF(PlayerData A, PlayerData D, double damage, Player defenderPlayer) {
         StatManager stats = plugin.getStatManager();
-        double def0 = stats.getSoftDef(defenderPlayer); // CORRECT CALL: Proxy BasePDef
+        double softPDef = stats.getSoftDef(defenderPlayer); // SoftPDEF = VIT × 0.5 + AGI × 0.2
 
-        // 1) Penetration flat: def1 = max(0, def0 - A.PPenFlat)
-        double def1 = Math.max(0, def0 - A.getPPenFlat());
-
-        // 2) Penetration %: def2 = def1 * (1 - A.PPenPercent / 100)
-        double def2 = def1 * (1 - A.getPPenPercent() / 100.0);
-
-        // 3) Ignore DEF flat: def3 = max(0, def2 - A.IgnorePDefFlat)
-        double def3 = Math.max(0, def2 - A.getIgnorePDefFlat());
-
-        // 4) Ignore DEF %: effectiveDef = def3 * (1 - A.IgnorePDefPercent / 100)
-        double effectiveDef = def3 * (1 - A.getIgnorePDefPercent() / 100.0);
+        // EffectivePDEF = max(0, (SoftPDEF - IgnorePDEF_flat) × (1 - IgnorePDEF% / 100))
+        double def1 = Math.max(0, softPDef - A.getIgnorePDefFlat());
+        double effectiveDef = def1 * (1 - A.getIgnorePDefPercent() / 100.0);
 
         // 5) Convert DEF -> Reduction
         double defReduction = effectiveDef / (effectiveDef + K_DEFENSE);
@@ -241,38 +233,39 @@ public class CombatHandler implements Listener {
 
     private double applyMagicDEF(PlayerData A, PlayerData D, double damage, Player defenderPlayer) {
         StatManager stats = plugin.getStatManager();
-        double def0 = stats.getSoftMDef(defenderPlayer); // CORRECT CALL: Proxy BaseMDef
+        double softMDef = stats.getSoftMDef(defenderPlayer); // SoftMDEF = INT × 1 + VIT × 0.2
 
-        // Simplified Magic Def Pipeline
-        double effectiveMDef = Math.max(0, def0 - A.getMPenFlat());
-        effectiveMDef *= (1 - A.getMPenPercent() / 100.0);
-        effectiveMDef = Math.max(0, effectiveMDef - A.getIgnoreMDefFlat());
-        effectiveMDef *= (1 - A.getIgnoreMDefPercent() / 100.0);
+        // EffectiveMDEF = max(0, (SoftMDEF - IgnoreMDEF_flat) × (1 - IgnoreMDEF% / 100))
+        double def1 = Math.max(0, softMDef - A.getIgnoreMDefFlat());
+        double effectiveMDef = def1 * (1 - A.getIgnoreMDefPercent() / 100.0);
 
+        // Convert DEF -> Reduction
         double mDefReduction = effectiveMDef / (effectiveMDef + K_DEFENSE);
 
         return damage * (1 - mDefReduction);
     }
 
-    // Section F: Critical Chance
+    // Section F: Critical Chance - Corrected
     private double calculateCritChance(PlayerData A, PlayerData D) {
-        // 1) Crit Chance: rawCrit = A.CRIT / 100
-        double rawCrit = A.getStatKeys().stream().filter(s -> s.equals("LUK")).findFirst().map(s -> A.getStat(s)).orElse(0) * 0.3 / 100.0;
+        // CriticalChance = max(0, LUK × 0.3 - TargetCritRes)
+        int luk = A.getStat("LUK"); // Get LUK stat from PlayerData A
+        double rawCritValue = luk * 0.3; // Raw CRIT value
 
-        // critRes = D.CRIT_RES / 100
-        double critRes = (D != null) ? D.getCritRes() / 100.0 : 0.0;
+        // TargetCritRes = LUK × 0.2 + BonusCritRes
+        double totalCritResValue = (D != null) ? (D.getStat("LUK") * 0.2) + D.getCritRes() : 0.0;
 
-        // effectiveCritChance = max(0, rawCrit - critRes)
-        return Math.max(0, rawCrit - critRes);
+        // Final Crit Chance (as a probability) = max(0, (RawCritValue - TotalCritResValue) / 100.0)
+        double effectiveCritValue = Math.max(0, rawCritValue - totalCritResValue);
+
+        return effectiveCritValue / 100.0;
     }
 
-    // Section F: Critical Multiplier
+    // Section F: Critical Multiplier - Corrected
     private double calculateCritMultiplier(PlayerData A, PlayerData D) {
+        // CritMultiplier = 1 + (CritDMG% / 100)
         double bonusCrit = A.getCritDmgPercent() / 100.0;
-        double resistCrit = (D != null) ? D.getCritDmgResPercent() / 100.0 : 0.0;
 
-        // CritMultiplier = baseCrit * (1 + bonusCrit) * (1 - resistCrit)
-        return BASE_CRIT * (1 + bonusCrit) * (1 - resistCrit);
+        return 1.0 + bonusCrit;
     }
 
     // Helper for visual effects

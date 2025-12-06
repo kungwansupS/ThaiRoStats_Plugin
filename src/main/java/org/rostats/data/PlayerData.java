@@ -144,28 +144,50 @@ public class PlayerData {
     public void clearAllPendingStats() { pendingStats.put("STR", 0); pendingStats.put("AGI", 0); pendingStats.put("VIT", 0);
         pendingStats.put("INT", 0); pendingStats.put("DEX", 0); pendingStats.put("LUK", 0); }
 
-    // Formula A.1 (Max HP)
+    // Formula A.1 (Max HP) - Corrected
     public double getMaxHP() {
         int vit = getStat("VIT") + getPendingStat("VIT"); // Base Stat + Pending Stat
         int baseLevel = getBaseLevel();
 
-        double baseHP = 100 + vit * 25 + baseLevel * 10;
-        return Math.floor(baseHP * (1 + getMaxHPPercent() / 100.0));
+        // MaxHP = (BaseHP + BaseHP × VIT × 0.01) × (1 + MaxHP% / 100)
+        // Assume BaseHP = 100 + baseLevel * 10
+        double baseHealth = 100.0 + (baseLevel * 10.0);
+        double vitMultiplier = 1.0 + (vit * 0.01);
+
+        double finalMaxHealth = baseHealth * vitMultiplier;
+        return Math.floor(finalMaxHealth * (1 + getMaxHPPercent() / 100.0));
     }
 
-    // Formula A.2 (Max SP)
+    // Formula A.2 (Max SP) - Corrected
     public double getMaxSP() {
         int intel = getStat("INT") + getPendingStat("INT");
         int baseLevel = getBaseLevel();
-        double baseSP = 20 + intel * 10 + baseLevel * 3;
-        return Math.floor(baseSP * (1 + getMaxSPPercent() / 100.0));
+
+        // MaxSP = (BaseSP + BaseSP × INT × 0.01) × (1 + MaxSP% / 100)
+        // Assume BaseSP = 20 + baseLevel * 3
+        double baseSP = 20.0 + (baseLevel * 3.0);
+        double intMultiplier = 1.0 + (intel * 0.01);
+
+        double finalMaxSP = baseSP * intMultiplier;
+        return Math.floor(finalMaxSP * (1 + getMaxSPPercent() / 100.0));
     }
 
-    // ... (rest of PlayerData methods remain the same) ...
+    // SP Regen - Corrected to include HealingReceive%
     public void calculateMaxSP() { if (this.currentSP > getMaxSP()) this.currentSP = getMaxSP(); }
     public void regenSP() { double max = getMaxSP();
-        if (this.currentSP < max) { int intel = getStat("INT"); double regen = 1 + (intel / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0)) + (max / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0));
-            this.currentSP += regen; if (this.currentSP > max) this.currentSP = max; }
+        if (this.currentSP < max) {
+            int intel = getStat("INT");
+
+            // SP Recovery = (BaseSPRecovery + INT × small_bonus + MaxSP_bonus) * (1 + HealingReceive% / 100)
+            double baseRegen = 1.0;
+            double intelBonus = intel / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0);
+            double maxSpBonus = max / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0);
+
+            double regen = baseRegen + intelBonus + maxSpBonus;
+            regen *= (1 + getHealingReceivedPercent() / 100.0); // Apply HealingReceive%
+
+            this.currentSP += regen;
+            if (this.currentSP > max) this.currentSP = max; }
     }
     public void resetStats() { stats.put("STR", 1); stats.put("AGI", 1); stats.put("VIT", 1);
         stats.put("INT", 1); stats.put("DEX", 1); stats.put("LUK", 1);
