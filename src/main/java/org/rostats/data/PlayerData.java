@@ -165,7 +165,7 @@ public class PlayerData {
 
         // MaxSP = (BaseSP + BaseSP × INT × 0.01) × (1 + MaxSP% / 100)
         // Assume BaseSP = 20 + baseLevel * 3
-        double baseSP = 20.0 + (baseLevel * 3.0);
+        double baseSP = 17.0 + (baseLevel * 3.0);
         double intMultiplier = 1.0 + (intel * 0.01);
 
         double finalMaxSP = baseSP * intMultiplier;
@@ -212,14 +212,16 @@ public class PlayerData {
     public void setResetCount(int count) { this.resetCount = count; }
     public void incrementResetCount() { this.resetCount++; }
     public void addBaseExp(long amount, UUID playerUUID) {
-        long expGained = amount;
-        plugin.showFloatingText(playerUUID, "§9§l+" + expGained + " Base EXP");
+        // FCT calls for EXP on kill and Job EXP on level-up are removed from here.
+        // The EXP on kill FCT is now handled in DeathHandler.
+
         this.baseExp += amount;
+
         while (this.baseExp >= getExpReq(this.baseLevel)) {
             this.baseExp -= getExpReq(this.baseLevel);
             this.baseLevel++;
             this.statPoints += getStatPointsGain(this.baseLevel);
-            plugin.showFloatingText(playerUUID, "§e§l+" + 100 + " Job EXP (Placeholder)");
+            // FCT for Job EXP on level-up is removed as it was incorrect.
         }
         calculateMaxSP();
     }

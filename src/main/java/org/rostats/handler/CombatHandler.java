@@ -81,11 +81,13 @@ public class CombatHandler implements Listener {
         // 1. HIT check (Hit vs Flee)
         if (!isMagic) {
             int attackerHit = stats.getHit(attackerPlayer);
-            int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 10;
+            // FIX: Set default mob Flee to 0 as requested
+            int defenderFlee = (defenderEntity instanceof Player) ? stats.getFlee((Player) defenderEntity) : 0;
 
-            // Formula: ChanceToHit = clamp(Hit / (Hit + TargetFLEE), 5%, 95%)
+            // Formula: ChanceToHit = clamp(Hit / (Hit + TargetFLEE), 5%, 100%)
             double hitRate = (double) attackerHit / (attackerHit + defenderFlee);
-            hitRate = Math.max(0.05, Math.min(0.95, hitRate));
+            // FIX: Changed upper cap from 0.95 to 1.0 to allow 100% hit chance when mob Flee is 0.
+            hitRate = Math.max(0.05, Math.min(1.0, hitRate));
 
             if (random.nextDouble() > hitRate) {
                 event.setCancelled(true);
@@ -184,6 +186,7 @@ public class CombatHandler implements Listener {
         }
 
         // 11. Apply Final/True DMG (Keeping original Final DMG steps from existing code)
+        double trueDamage = 0.0;
         if (D != null) {
             // Final DMG%
             damageTaken *= (1 + A.getFinalDmgPercent() / 100.0);
@@ -197,6 +200,9 @@ public class CombatHandler implements Listener {
 
             // Final DMG RES%
             damageTaken *= (1 - D.getFinalDmgResPercent() / 100.0);
+
+            // True Damage (Flat value is extracted)
+            trueDamage = A.getTrueDamageFlat();
         }
 
         // 12. Apply Shield absorption (Section J)
@@ -210,9 +216,15 @@ public class CombatHandler implements Listener {
         double finalDamage = Math.max(1.0, damageTaken);
         event.setDamage(finalDamage);
 
-        if (isCritical && attackerPlayer != null) {
-            showCritEffects(attackerPlayer, defenderEntity, finalDamage);
+        // --- FCT Display ---
+        if (attackerPlayer != null) {
+            showDamageText(defenderEntity, finalDamage, isCritical, trueDamage);
         }
+
+        if (isCritical && attackerPlayer != null) {
+            showCritVisuals(attackerPlayer, defenderEntity);
+        }
+        // --- END FCT Display ---
     }
 
     // ==========================================
@@ -290,12 +302,35 @@ public class CombatHandler implements Listener {
         return 1.0 + bonusCrit;
     }
 
-    // Helper for visual effects
-    private void showCritEffects(Player attacker, LivingEntity victim, double finalDamage) {
-        showFloatingText(victim.getLocation().add(0, 2, 0), "§c§lCRITICAL " + String.format("%.0f", finalDamage));
+    // --- NEW: FCT Text Handler ---
+    private void showDamageText(LivingEntity victim, double finalDamage, boolean isCritical, double trueDamage) {
+        Location loc = victim.getLocation().add(0, 1.5, 0);
+
+        // 1. True Damage (always display first as separate text)
+        if (trueDamage >= 1.0) {
+            // Apply slight random offset for true damage text
+            showFloatingText(loc.clone().add(random.nextDouble() * 0.5 - 0.25, 0.2, random.nextDouble() * 0.5 - 0.25),
+                    "§6" + String.format("%.0f", trueDamage) + "✦"); // FCT Rule: True Damage
+        }
+
+        // 2. Primary Damage (Normal/Critical)
+        String damageText;
+        if (isCritical) {
+            damageText = "§c" + String.format("%.0f", finalDamage) + "!"; // FCT Rule: Critical Damage
+        } else {
+            damageText = "§f" + String.format("%.0f", finalDamage); // FCT Rule: Normal Damage
+        }
+
+        // Show Primary Damage
+        showFloatingText(loc, damageText);
+    }
+
+    // Helper for visual effects (Refactored from showCritEffects)
+    private void showCritVisuals(Player attacker, LivingEntity victim) {
         attacker.playSound(attacker.getLocation(), Sound.ENTITY_PLAYER_ATTACK_CRIT, 1f, 1f);
         attacker.getWorld().spawnParticle(Particle.CRIT, victim.getLocation().add(0, 1, 0), 20);
 
+        // Title logic
         Title.Times times = Title.Times.times(Duration.ofMillis(0), Duration.ofMillis(500), Duration.ofMillis(200));
         attacker.showTitle(Title.title(Component.text(""), Component.text("§cCRITICAL!"), times));
     }

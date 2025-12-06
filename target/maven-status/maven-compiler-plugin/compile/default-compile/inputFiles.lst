@@ -9,6 +9,7 @@ D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\gui\MainMenu.java
 D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\gui\StatusMenu.java
 D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\handler\AttributeHandler.java
 D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\handler\CombatHandler.java
+D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\handler\DeathHandler.java
 D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\handler\ManaManager.java
 D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\hook\PAPIHook.java
 D:\github\ThaiRoStats_Plugin\src\main\java\org\rostats\ROStatsPlugin.java

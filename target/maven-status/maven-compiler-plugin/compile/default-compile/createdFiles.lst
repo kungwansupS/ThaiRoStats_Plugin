@@ -1,3 +1,4 @@
+org\rostats\handler\DeathHandler.class
 org\rostats\data\StatManager.class
 org\rostats\gui\CharacterGUI$Tab.class
 org\rostats\gui\GUIListener.class
