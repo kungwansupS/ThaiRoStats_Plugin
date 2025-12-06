@@ -129,24 +129,25 @@ public class CharacterGUI {
         StatManager stats = plugin.getStatManager();
         double maxHP = player.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
         double currentHP = player.getHealth();
-        // Recalculate SP Regen based on new formula
-        double currentSPRegen = 1 + (data.getStat("INT") / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0)) + (data.getMaxSP() / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0));
+        // SP Recovery = (BaseSPRecovery + INT × small_bonus) * (1 + HealingReceive% / 100)
+        double currentSPRegen = 1 + (data.getStat("INT") / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0));
         currentSPRegen *= (1 + data.getHealingReceivedPercent() / 100.0); // Apply HealingReceive%
+        // HP Recovery = (BaseHPRecovery + VIT × 0.2) * (1 + HealingReceive% / 100)
+        double currentHPRegen = data.getHPRegen();
 
         List<String> lore = new ArrayList<>();
         lore.add("§7");
-        lore.add("   §e§lGENERAL ATTRIBUTE");
+        lore.add("   §6§lGENERAL ATTRIBUTE");
         lore.add(" ");
 
         // HP | SP
-        lore.add(formatTwoColumns("§7HP: §f" + String.format("%.0f/%.0f", currentHP, maxHP), "§7SP: §f" + String.format("%.0f/%.0f", data.getCurrentSP(), data.getMaxSP())));
+        lore.add(formatTwoColumns("§7HP: §e" + String.format("%.0f/%.0f", currentHP, maxHP), "§7SP: §e" + String.format("%.0f/%.0f", data.getCurrentSP(), data.getMaxSP())));
         // P.ATK | M.ATK
-        lore.add(formatTwoColumns("§7P.ATK: §f" + String.format("%.0f", stats.getPhysicalAttack(player)), "§7M.ATK: §f" + String.format("%.0f", stats.getMagicAttack(player))));
+        lore.add(formatTwoColumns("§7P.ATK: §a" + String.format("%.0f", stats.getPhysicalAttack(player)), "§7M.ATK: §b" + String.format("%.0f", stats.getMagicAttack(player))));
         // P.DEF | M.DEF
-        lore.add(formatTwoColumns("§7P.DEF: §f" + String.format("%.0f", stats.getSoftDef(player)), "§7M.DEF: §f" + String.format("%.0f", stats.getSoftMDef(player))));
+        lore.add(formatTwoColumns("§7P.DEF: §a" + String.format("%.0f", stats.getSoftDef(player)), "§7M.DEF: §b" + String.format("%.0f", stats.getSoftMDef(player))));
         // HP Recovery | SP Recovery
-        // HP Recovery formula is missing from provided list, keeping 0 as a placeholder for BaseHPRecovery or derived stat
-        lore.add(formatTwoColumns("§7HP Recovery: §f" + String.format("%.0f", 0.0), "§7SP Recovery: §f" + String.format("%.1f", currentSPRegen)));
+        lore.add(formatTwoColumns("§7HP Recovery: §e" + String.format("%.1f", currentHPRegen), "§7SP Recovery: §e" + String.format("%.1f", currentSPRegen)));
         // HIT | FLEE
         lore.add(formatTwoColumns("§7HIT: §f" + stats.getHit(player), "§7FLEE: §f" + stats.getFlee(player)));
 
@@ -163,71 +164,74 @@ public class CharacterGUI {
 
         List<String> lore = new ArrayList<>();
         lore.add("§7");
-        lore.add("   §b§lADVANCED ATTRIBUTE");
+        lore.add("   §9§lADVANCED ATTRIBUTE");
         lore.add(" ");
 
         // Speed / Cast
         lore.add("§f§l-- Speed / Cast --");
-        lore.add(formatTwoColumns("§7ASPD: §f" + String.format("%.0f%%", (stats.getAspdBonus(player) * 100.0)), "§7MSPD: §f" + String.format("%.1f%%", data.getMSpdPercent())));
-        // Changed to match placeholder format (VarCTFlat/FixedCTFlat as Variable CT/Fixed CT)
-        lore.add(formatTwoColumns("§7Variable CT: §f" + String.format("%.1f", data.getVarCTFlat()) + "s", "§7Variable Casting: §f" + String.format("%.1f%%", data.getVarCTPercent())));
-        lore.add(formatTwoColumns("§7Fixed CT: §f" + String.format("%.1f", data.getFixedCTFlat()) + "s", "§7Fixed Casting: §f" + String.format("%.1f%%", data.getFixedCTPercent())));
+        // ASPD / MSPD
+        lore.add(formatTwoColumns("§7ASPD: §a" + String.format("%.0f%%", (stats.getAspdBonus(player) * 100.0)), "§7MSPD: §a" + String.format("%.1f%%", data.getMSpdPercent())));
+        // Variable CT/Casting
+        lore.add(formatTwoColumns("§7Variable CT: §d" + String.format("%.1f", data.getVarCTFlat()), "§7Variable Casting: §d" + String.format("%.1f%%", data.getVarCTPercent())));
+        // Fixed CT/Casting
+        lore.add(formatTwoColumns("§7Fixed CT: §d" + String.format("%.1f", data.getFixedCTFlat()), "§7Fixed Casting: §d" + String.format("%.1f%%", data.getFixedCTPercent())));
         lore.add(" ");
 
         // Healing
         lore.add("§f§l-- Healing --");
-        // Changed to match placeholder format (Healing Effect/Healing Receive)
-        lore.add(formatTwoColumns("§7Healing Effect: §f" + String.format("%.1f%%", data.getHealingEffectPercent()), "§7Healing Receive: §f" + String.format("%.1f%%", data.getHealingReceivedPercent())));
+        // Healing Effect/Receive
+        lore.add(formatTwoColumns("§7Healing Effect: §a" + String.format("%.1f%%", data.getHealingEffectPercent()), "§7Healing Receive: §a" + String.format("%.1f%%", data.getHealingReceivedPercent())));
         lore.add(" ");
 
         // Critical
         lore.add("§f§l-- Critical --");
         // CRIT / CRIT RES
         double totalCritResRaw = (data.getStat("LUK") * 0.2) + data.getCritRes();
-        lore.add(formatTwoColumns("§7CRIT: §f" + String.format("%.1f", stats.getCritChance(player)), "§7CRIT RES: §f" + String.format("%.1f", totalCritResRaw)));
+        lore.add(formatTwoColumns("§7CRIT: §e" + String.format("%.1f", stats.getCritChance(player)), "§7CRIT RES: §e" + String.format("%.1f", totalCritResRaw)));
         // CRIT DMG / CRIT DMG RES
-        lore.add(formatTwoColumns("§7CRIT DMG: §f" + String.format("%.1f%%", data.getCritDmgPercent()), "§7CRIT DMG RES: §f" + String.format("%.1f%%", data.getCritDmgResPercent())));
+        lore.add(formatTwoColumns("§7CRIT DMG: §c" + String.format("%.1f%%", data.getCritDmgPercent()), "§7CRIT DMG RES: §c" + String.format("%.1f%%", data.getCritDmgResPercent())));
         lore.add(" ");
 
         // Damage Bonus
         lore.add("§f§l-- Damage Bonus --");
-        // Changed to match placeholder format (P.DMG Bonus/M.DMG Bonus)
-        lore.add(formatTwoColumns("§7P.DMG Bonus: §f" + String.format("%.1f%%", data.getPDmgBonusPercent()), "§7M.DMG Bonus: §f" + String.format("%.1f%%", data.getMDmgBonusPercent())));
+        // P.DMG Bonus/M.DMG Bonus
+        lore.add(formatTwoColumns("§7P.DMG Bonus: §a" + String.format("%.1f%%", data.getPDmgBonusPercent()), "§7M.DMG Bonus: §b" + String.format("%.1f%%", data.getMDmgBonusPercent())));
         lore.add(" ");
 
         // Damage Reduction
         lore.add("§f§l-- Damage Reduction --");
-        // Changed to match placeholder format (P.DMG Reduction/M.DMG Reduction)
-        lore.add(formatTwoColumns("§7P.DMG Reduction: §f" + String.format("%.1f%%", data.getPDmgReductionPercent()), "§7M.DMG Reduction: §f" + String.format("%.1f%%", data.getMDmgReductionPercent())));
+        // P.DMG Reduction/M.DMG Reduction
+        lore.add(formatTwoColumns("§7P.DMG Reduction: §c" + String.format("%.1f%%", data.getPDmgReductionPercent()), "§7M.DMG Reduction: §c" + String.format("%.1f%%", data.getMDmgReductionPercent())));
         lore.add(" ");
 
         // Melee / Range
         lore.add("§f§l-- Melee / Range --");
-        // Changed to match placeholder format (Melee P.DMG/Range P.DMG, Melee P.Reduction/Range P.Reduction)
-        lore.add(formatTwoColumns("§7Melee P.DMG: §f" + String.format("%.1f%%", data.getMeleePDmgPercent()), "§7Range P.DMG: §f" + String.format("%.1f%%", data.getRangePDmgPercent())));
-        lore.add(formatTwoColumns("§7Melee P.Reduction: §f" + String.format("%.1f%%", data.getMeleePDReductionPercent()), "§7Range P.Reduction: §f" + String.format("%.1f%%", data.getRangePDReductionPercent())));
+        // Melee P.DMG/Range P.DMG
+        lore.add(formatTwoColumns("§7Melee P.DMG: §a" + String.format("%.1f%%", data.getMeleePDmgPercent()), "§7Range P.DMG: §a" + String.format("%.1f%%", data.getRangePDmgPercent())));
+        // Melee Reduction/Range Reduction
+        lore.add(formatTwoColumns("§7Melee Reduction: §c" + String.format("%.1f%%", data.getMeleePDReductionPercent()), "§7Range Reduction: §c" + String.format("%.1f%%", data.getRangePDReductionPercent())));
         lore.add(" ");
 
-        // Ignore Defense (Uses flat ignore def and ignore def %)
+        // Ignore Defense
         lore.add("§f§l-- Ignore Defense --");
-        // Changed to match placeholder format (Ignore P.DEF/Ignore M.DEF)
-        lore.add(formatTwoColumns("§7Ignore P.DEF: §f" + String.format("%.0f", data.getIgnorePDefFlat()), "§7Ignore M.DEF: §f" + String.format("%.0f", data.getIgnoreMDefFlat())));
-        // Changed to match placeholder format (Ignore P.DEF%/Ignore M.DEF%)
-        lore.add(formatTwoColumns("§7Ignore P.DEF%: §f" + String.format("%.1f%%", data.getIgnorePDefPercent()), "§7Ignore M.DEF%: §f" + String.format("%.1f%%", data.getIgnoreMDefPercent())));
+        // Ignore P.DEF/M.DEF (Flat)
+        lore.add(formatTwoColumns("§7Ignore P.DEF: §6" + String.format("%.0f", data.getIgnorePDefFlat()), "§7Ignore M.DEF: §6" + String.format("%.0f", data.getIgnoreMDefFlat())));
+        // Ignore P.DEF%/M.DEF%
+        lore.add(formatTwoColumns("§7Ignore P.DEF%: §6" + String.format("%.1f%%", data.getIgnorePDefPercent()), "§7Ignore M.DEF%: §6" + String.format("%.1f%%", data.getIgnoreMDefPercent())));
         lore.add(" ");
 
         // Flat DMG Boost
         lore.add("§f§l-- Flat DMG Boost --");
-        // Changed to match placeholder format (P.DMG Bonus+/M.DMG Bonus+)
-        lore.add(formatTwoColumns("§7P.DMG Bonus+: §f" + String.format("%.0f", data.getPDmgBonusFlat()), "§7M.DMG Bonus+: §f" + String.format("%.0f", data.getMDmgBonusFlat())));
+        // P.DMG Bonus+/M.DMG Bonus+
+        lore.add(formatTwoColumns("§7P.DMG Bonus+: §e" + String.format("%.0f", data.getPDmgBonusFlat()), "§7M.DMG Bonus+: §e" + String.format("%.0f", data.getMDmgBonusFlat())));
         lore.add(" ");
 
         // PVE / PVP
         lore.add("§f§l-- PVE / PVP --");
-        // Changed to match placeholder format (PVE DMG Bonus/PVP DMG Bonus)
-        lore.add(formatTwoColumns("§7PVE DMG Bonus: §f" + String.format("%.1f%%", data.getPveDmgBonusPercent()), "§7PVP DMG Bonus: §f" + String.format("%.1f%%", data.getPvpDmgBonusPercent())));
-        // Changed to match placeholder format (PVE DMG Reduction/PVP DMG Reduction)
-        lore.add(formatTwoColumns("§7PVE DMG Reduction: §f" + String.format("%.1f%%", data.getPveDmgReductionPercent()), "§7PVP DMG Reduction: §f" + String.format("%.1f%%", data.getPvpDmgReductionPercent())));
+        // PVE DMG Bonus/PVP DMG Bonus (PVP bonus is flat here)
+        lore.add(formatTwoColumns("§7PVE DMG Bonus: §a" + String.format("%.0f", data.getPveDmgBonusPercent()), "§7PVP DMG Bonus: §c" + String.format("%.0f", data.getPvpDmgBonusPercent())));
+        // PVE DMG Reduction/PVP DMG Reduction
+        lore.add(formatTwoColumns("§7PVE DMG Reduction: §a" + String.format("%.1f%%", data.getPveDmgReductionPercent()), "§7PVP DMG Reduction: §c" + String.format("%.1f%%", data.getPvpDmgReductionPercent())));
 
         lore.add("§7--------------------");
         lore.add("§7คลิกเพื่อเปิดหน้าจอข้อมูลการต่อสู้ขั้นสูง");
@@ -243,7 +247,7 @@ public class CharacterGUI {
         lore.add(" ");
 
         // Max HP% | Max SP%
-        lore.add(formatTwoColumns("§7Max HP%: §f" + String.format("%.1f%%", data.getMaxHPPercent()), "§7Max SP%: §f" + String.format("%.1f%%", data.getMaxSPPercent())));
+        lore.add(formatTwoColumns("§7Max HP%: §e" + String.format("%.1f%%", data.getMaxHPPercent()), "§7Max SP%: §e" + String.format("%.1f%%", data.getMaxSPPercent())));
         lore.add(" "); // Separator
 
         // Lifesteal P | Lifesteal M
@@ -251,7 +255,7 @@ public class CharacterGUI {
         // True DMG | Shield
         lore.add(formatTwoColumns("§7True DMG: §f" + String.format("%.0f", data.getTrueDamageFlat()), "§7Shield: §f" + String.format("%.0f", data.getShieldValueFlat())));
         // Shield Rate | Reserved
-        lore.add(formatTwoColumns("§7Shield Rate: §f" + String.format("%.1f%%", data.getShieldRatePercent()), "§7(Reserved)"));
+        lore.add(formatTwoColumns("§7Shield Rate: §f" + String.format("%.1f%%", data.getShieldRatePercent()), "§7Reserved"));
 
         lore.add("§7--------------------");
         lore.add("§7คลิกเพื่อเปิดหน้าจอข้อมูลพิเศษ");
@@ -364,45 +368,69 @@ public class CharacterGUI {
         switch (statKey) {
             case "STR":
                 lines.add("§cSTR §7- เพิ่มพลังโจมตีทางกายภาพ");
+                // +1 P.ATK per STR
                 lines.add("§7• P.ATK: §f+1 §7ต่อ STR");
-                lines.add("§7• P.ATK: §f+0.2 §7ต่อ DEX");
-                lines.add("§7• P.ATK: §f+0.2 §7ต่อ LUK");
-                lines.add("§7• Weapon ATK: §f+0.5% §7ต่อ STR (Melee & Range)");
+                // +0.2 P.ATK (ranged component) per STR
+                lines.add("§7• Ranged P.ATK: §f+0.2 §7ต่อ STR");
+                // (No Weapon ATK % because plugin does not implement it)
                 break;
             case "AGI":
                 lines.add("§bAGI §7- เพิ่มความเร็วและความคล่องตัว");
+                // +1 FLEE per AGI
                 lines.add("§7• FLEE: §f+1 §7ต่อ AGI");
+                // +0.2 P.DEF per AGI
                 lines.add("§7• Soft P.DEF: §f+0.2 §7ต่อ AGI");
+                // (Increases ASPD slightly – plugin-based)
                 lines.add("§7• ASPD: §fเพิ่มขึ้นเล็กน้อย");
                 break;
             case "VIT":
                 lines.add("§aVIT §7- เพิ่มความทนทานและการป้องกัน");
+                // +1% MaxHP per VIT
                 lines.add("§7• Max HP: §f+1% §7ต่อ VIT");
+                // +0.5 P.DEF per VIT
                 lines.add("§7• Soft P.DEF: §f+0.5 §7ต่อ VIT");
+                // +0.2 M.DEF per VIT
                 lines.add("§7• Soft M.DEF: §f+0.2 §7ต่อ VIT");
+                // (Increases HP Recovery)
                 lines.add("§7• HP Recovery: §fเพิ่มขึ้น");
                 break;
             case "INT":
                 lines.add("§dINT §7- เพิ่มพลังเวทและประสิทธิภาพการใช้สกิล");
+                // +1.5 M.ATK per INT
                 lines.add("§7• M.ATK: §f+1.5 §7ต่อ INT");
+                // +1 M.DEF per INT
                 lines.add("§7• Soft M.DEF: §f+1 §7ต่อ INT");
+                // +1% MaxSP per INT
                 lines.add("§7• Max SP: §f+1% §7ต่อ INT");
+                // (Increases SP Recovery)
                 lines.add("§7• SP Recovery: §fเพิ่มขึ้น");
+                // (reduces cast time slightly)
                 lines.add("§7• Variable Cast Time: §fลดลงเล็กน้อย");
                 break;
             case "DEX":
                 lines.add("§6DEX §7- เพิ่มความแม่นยำและพลังโจมตีระยะไกล");
+                // +1 Ranged P.ATK per DEX
+                lines.add("§7• Ranged P.ATK: §f+1 §7ต่อ DEX");
+                // +0.2 Melee P.ATK per DEX
+                lines.add("§7• Melee P.ATK: §f+0.2 §7ต่อ DEX");
+                // +0.2 M.DEF per DEX
+                lines.add("§7• Soft M.DEF: §f+0.2 §7ต่อ DEX");
+                // +1 HIT per DEX
                 lines.add("§7• HIT: §f+1 §7ต่อ DEX");
-                lines.add("§7• P.ATK: §f+0.2 §7ต่อ DEX");
+                // (Increases ASPD slightly)
                 lines.add("§7• ASPD: §fเพิ่มขึ้นเล็กน้อย");
+                // (reduces cast time slightly)
                 lines.add("§7• Variable Cast Time: §fลดลงเล็กน้อย");
-                lines.add("§7• Ranged ATK: §f+1 §7ต่อ DEX");
                 break;
             case "LUK":
                 lines.add("§eLUK §7- เพิ่มค่าคริติคอลและความหลากหลายของค่าสถานะ");
+                // +0.3 CRIT per LUK
                 lines.add("§7• CRIT: §f+0.3 §7ต่อ LUK");
+                // +0.2 CRIT RES per LUK
                 lines.add("§7• CRIT RES: §f+0.2 §7ต่อ LUK");
+                // +0.2 P.ATK per LUK
                 lines.add("§7• P.ATK: §f+0.2 §7ต่อ LUK");
+                // +0.3 M.ATK per LUK
                 lines.add("§7• M.ATK: §f+0.3 §7ต่อ LUK");
                 break;
         }
@@ -466,5 +494,5 @@ public class CharacterGUI {
     }
 
     // LORE GENERATION METHODS (for Tabs)
-    // (getBasicStatusLore, getGeneralLore, getAdvancedLore, getSpecialLore are defined above)
+    // (getBasicStatusLore, getGeneralLore, getAdvancedLore, getSpecialLore, getStatDescriptionLore defined above)
 }

@@ -172,18 +172,27 @@ public class PlayerData {
         return Math.floor(finalMaxSP * (1 + getMaxSPPercent() / 100.0));
     }
 
-    // SP Regen - Corrected to include HealingReceive%
+    // NEW: HP Recovery Formula
+    // HP Recovery = (BaseHPRecovery + VIT × 0.2) × (1 + HealingReceive% / 100)
+    public double getHPRegen() {
+        int vit = getStat("VIT");
+        double baseHPRecovery = 1.0; // Assume BaseHPRecovery = 1.0
+
+        double baseRegen = baseHPRecovery + (vit * 0.2);
+        return baseRegen * (1 + getHealingReceivedPercent() / 100.0);
+    }
+
+    // SP Regen - Corrected to include HealingReceive% and exclude maxSpBonus
     public void calculateMaxSP() { if (this.currentSP > getMaxSP()) this.currentSP = getMaxSP(); }
     public void regenSP() { double max = getMaxSP();
         if (this.currentSP < max) {
             int intel = getStat("INT");
 
-            // SP Recovery = (BaseSPRecovery + INT × small_bonus + MaxSP_bonus) * (1 + HealingReceive% / 100)
+            // SP Recovery = (BaseSPRecovery + INT × small_bonus) * (1 + HealingReceive% / 100)
             double baseRegen = 1.0;
             double intelBonus = intel / plugin.getConfig().getDouble("sp-regen.regen-int-divisor", 6.0);
-            double maxSpBonus = max / plugin.getConfig().getDouble("sp-regen.regen-maxsp-divisor", 100.0);
 
-            double regen = baseRegen + intelBonus + maxSpBonus;
+            double regen = baseRegen + intelBonus; // Removed maxSpBonus
             regen *= (1 + getHealingReceivedPercent() / 100.0); // Apply HealingReceive%
 
             this.currentSP += regen;
