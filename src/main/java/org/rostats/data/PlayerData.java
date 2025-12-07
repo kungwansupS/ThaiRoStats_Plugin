@@ -148,6 +148,56 @@ public class PlayerData {
     public int getSkillPoints() { return skillPoints; }
     public void setSkillPoints(int skillPoints) { this.skillPoints = skillPoints; }
 
+    // --- NEW Setters for Item Bonuses (สำคัญที่ทำให้ Item Editor ใช้งานได้จริง) ---
+    public void setPAtkBonusFlat(double pAtkBonusFlat) { this.pAtkBonusFlat = pAtkBonusFlat; }
+    public void setMAtkBonusFlat(double mAtkBonusFlat) { this.mAtkBonusFlat = mAtkBonusFlat; }
+    public void setCritRes(double critRes) { this.critRes = critRes; }
+    public void setCritDmgPercent(double critDmgPercent) { this.critDmgPercent = critDmgPercent; }
+    public void setPDmgBonusPercent(double pDmgBonusPercent) { this.pDmgBonusPercent = pDmgBonusPercent; }
+    public void setMDmgBonusPercent(double mDmgBonusPercent) { this.mDmgBonusPercent = mDmgBonusPercent; }
+    public void setPPenPercent(double pPenPercent) { this.pPenPercent = pPenPercent; }
+    public void setMPenPercent(double mPenPercent) { this.mPenPercent = mPenPercent; }
+    public void setIgnorePDefPercent(double ignorePDefPercent) { this.ignorePDefPercent = ignorePDefPercent; }
+    public void setIgnoreMDefPercent(double ignoreMDefPercent) { this.ignoreMDefPercent = ignoreMDefPercent; }
+    public void setASpdPercent(double aSpdPercent) { this.aSpdPercent = aSpdPercent; }
+    public void setMSpdPercent(double mSpdPercent) { this.mSpdPercent = mSpdPercent; }
+    public void setFinalDmgPercent(double finalDmgPercent) { this.finalDmgPercent = finalDmgPercent; }
+    public void setFinalDmgResPercent(double finalDmgResPercent) { this.finalDmgResPercent = finalDmgResPercent; }
+    public void setFinalPDmgPercent(double finalPDmgPercent) { this.finalPDmgPercent = finalPDmgPercent; }
+    public void setFinalMDmgPercent(double finalMDmgPercent) { this.finalMDmgPercent = finalMDmgPercent; }
+    public void setPveDmgBonusPercent(double pveDmgBonusPercent) { this.pveDmgBonusPercent = pveDmgBonusPercent; }
+    public void setPvpDmgBonusPercent(double pvpDmgBonusPercent) { this.pvpDmgBonusPercent = pvpDmgBonusPercent; }
+    public void setMaxHPPercent(double maxHPPercent) { this.maxHPPercent = maxHPPercent; }
+    public void setMaxSPPercent(double maxSPPercent) { this.maxSPPercent = maxSPPercent; }
+    public void setLifestealPPercent(double lifestealPPercent) { this.lifestealPPercent = lifestealPPercent; }
+    public void setLifestealMPercent(double lifestealMPercent) { this.lifestealMPercent = lifestealMPercent; }
+    public void setTrueDamageFlat(double trueDamageFlat) { this.trueDamageFlat = trueDamageFlat; }
+    public void setShieldValueFlat(double shieldValueFlat) { this.shieldValueFlat = shieldValueFlat; }
+    public void setShieldRatePercent(double shieldRatePercent) { this.shieldRatePercent = shieldRatePercent; }
+    public void setFixedCTFlat(double fixedCTFlat) { this.fixedCTFlat = fixedCTFlat; }
+    public void setPvpDmgReductionPercent(double pvpDmgReductionPercent) { this.pvpDmgReductionPercent = pvpDmgReductionPercent; }
+    public void setPveDmgReductionPercent(double pveDmgReductionPercent) { this.pveDmgReductionPercent = pveDmgReductionPercent; }
+    public void setPDmgReductionPercent(double pDmgReductionPercent) { this.pDmgReductionPercent = pDmgReductionPercent; }
+    public void setMDmgReductionPercent(double mDmgReductionPercent) { this.mDmgReductionPercent = mDmgReductionPercent; }
+    public void setFixedCTPercent(double fixedCTPercent) { this.fixedCTPercent = fixedCTPercent; }
+    public void setVarCTPercent(double varCTPercent) { this.varCTPercent = varCTPercent; }
+    public void setVarCTFlat(double varCTFlat) { this.varCTFlat = varCTFlat; }
+    public void setHealingEffectPercent(double healingEffectPercent) { this.healingEffectPercent = healingEffectPercent; }
+    public void setHealingReceivedPercent(double healingReceivedPercent) { this.healingReceivedPercent = healingReceivedPercent; }
+    public void setMeleePDmgPercent(double meleePDmgPercent) { this.meleePDmgPercent = meleePDmgPercent; }
+    public void setRangePDmgPercent(double rangePDmgPercent) { this.rangePDmgPercent = rangePDmgPercent; }
+    public void setMeleePDReductionPercent(double meleePDReductionPercent) { this.meleePDReductionPercent = meleePDReductionPercent; }
+    public void setRangePDReductionPercent(double rangePDReductionPercent) { this.rangePDReductionPercent = rangePDReductionPercent; }
+    public void setPPenFlat(double pPenFlat) { this.pPenFlat = pPenFlat; }
+    public void setMPenFlat(double mPenFlat) { this.mPenFlat = mPenFlat; }
+    public void setCritDmgResPercent(double critDmgResPercent) { this.critDmgResPercent = critDmgResPercent; }
+    public void setIgnorePDefFlat(double ignorePDefFlat) { this.ignorePDefFlat = ignorePDefFlat; }
+    public void setIgnoreMDefFlat(double ignoreMDefFlat) { this.ignoreMDefFlat = ignoreMDefFlat; }
+    public void setWeaponPAtk(double weaponPAtk) { this.weaponPAtk = weaponPAtk; }
+    public void setWeaponMAtk(double weaponMAtk) { this.weaponMAtk = weaponMAtk; }
+    public void setHitBonusFlat(double hitBonusFlat) { this.hitBonusFlat = hitBonusFlat; }
+    public void setFleeBonusFlat(double fleeBonusFlat) { this.fleeBonusFlat = fleeBonusFlat; }
+    public void setBaseMSPD(double baseMSPD) { this.baseMSPD = baseMSPD; }
 
     // --- Core Methods (Modified) ---
     public int getStat(String key) { return stats.getOrDefault(key.toUpperCase(), 1); }

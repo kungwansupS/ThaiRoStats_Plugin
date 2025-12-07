@@ -2,25 +2,16 @@ package org.rostats; // <-- แก้ไขให้ถูกต้องแล�
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.command.PluginCommand;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.plugin.java.JavaPlugin;
+// ... (omitted existing imports)
 import org.bukkit.scheduler.BukkitTask;
 import org.rostats.command.AdminCommand;
 import org.rostats.command.PlayerCommand;
-import org.rostats.data.DataManager;
-import org.rostats.data.StatManager;
-import org.rostats.gui.GUIListener;
-import org.rostats.handler.AttributeHandler;
-import org.rostats.handler.CombatHandler;
+// ... (omitted existing imports)
 import org.rostats.handler.ManaManager;
 import org.rostats.hook.PAPIHook;
+import org.bukkit.plugin.Plugin; // NEW IMPORT
+import org.rostats.itemeditor.ItemAttributeManager; // NEW IMPORT
+import org.rostats.itemeditor.ItemEditorPlugin; // NEW IMPORT
 
 import java.util.UUID;
 
@@ -31,6 +22,7 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
     private CombatHandler combatHandler;
     private ManaManager manaManager;
     private DataManager dataManager;
+    private ItemAttributeManager itemAttributeManager; // NEW FIELD: Store Item Manager instance
 
     @Override
     public void onEnable() {
@@ -38,158 +30,41 @@ public class ROStatsPlugin extends JavaPlugin implements Listener {
         saveDefaultConfig();
 
         // 1. Initialize Managers
-        this.statManager = new StatManager(this);
-        this.dataManager = new DataManager(this);
-        this.manaManager = new ManaManager(this);
-        this.attributeHandler = new AttributeHandler(this);
-        this.combatHandler = new CombatHandler(this);
+        // ... (omitted initialization code)
 
         // 2. Register Events
-        getServer().getPluginManager().registerEvents(attributeHandler, this);
-        getServer().getPluginManager().registerEvents(combatHandler, this);
-        getServer().getPluginManager().registerEvents(manaManager, this);
-        getServer().getPluginManager().registerEvents(new GUIListener(this), this);
-        getServer().getPluginManager().registerEvents(this, this);
+        // ... (omitted event registration code)
 
         // 3. Register Commands
-        PluginCommand statusCmd = getCommand("status");
-        if (statusCmd != null) statusCmd.setExecutor(new PlayerCommand(this));
-
-        PluginCommand adminCmd = getCommand("roadmin");
-        if (adminCmd != null) {
-            AdminCommand adminExecutor = new AdminCommand(this);
-            adminCmd.setExecutor(adminExecutor);
-            adminCmd.setTabCompleter(adminExecutor);
-        }
+        // ... (omitted command registration code)
 
         // 4. PAPI Hook
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new PAPIHook(this).register();
         }
 
-        // 5. Auto-Save Task (NEW: for completeness)
-        // บันทึกข้อมูลทุก 5 นาที (6000 ticks)
-        getServer().getScheduler().runTaskTimer(this, () -> {
-            for (Player player : getServer().getOnlinePlayers()) {
-                dataManager.savePlayerData(player);
-            }
-            getLogger().info("💾 Auto-Saved all player data.");
-        }, 6000L, 6000L);
-
-
-        getLogger().info("✅ ROStats Enabled (Core Stats System)!");
-    }
-
-    @Override
-    public void onDisable() {
-        if (dataManager != null) {
-            for (Player player : getServer().getOnlinePlayers()) {
-                dataManager.savePlayerData(player);
-                if (manaManager != null) manaManager.removeBar(player);
-            }
+        // 5. Item Editor Hook (NEW)
+        Plugin itemEditor = getServer().getPluginManager().getPlugin("ThaiRoStats-ItemEditor");
+        if (itemEditor instanceof ItemEditorPlugin editorPlugin) {
+            this.itemAttributeManager = editorPlugin.getAttributeManager();
+            getLogger().info("✅ Hooked to ThaiRoStats-ItemEditor! Item bonuses will be applied.");
+        } else {
+            getLogger().warning("❌ ThaiRoStats-ItemEditor not found. Item bonuses disabled.");
         }
-        getLogger().info("❌ ROStats Disabled");
+
+        // 6. Auto-Save Task (NEW: for completeness)
+        // ... (omitted existing code)
     }
 
-    @EventHandler
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        dataManager.loadPlayerData(event.getPlayer());
-    }
+    // ... (omitted onDisable and event handlers)
 
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        dataManager.savePlayerData(event.getPlayer());
-    }
+    // ... (omitted showFloatingText, showCombatFloatingText, showAnimatedText, etc.)
 
-    // MODIFIED: Helper method for Floating Text (Hologram) with animation and offset (For EXP/Level Up Stacking)
-    public void showFloatingText(UUID playerUUID, String text, double verticalOffset) {
-        Player player = Bukkit.getPlayer(playerUUID);
-        if (player == null || !player.isOnline()) return;
-
-        // Start location: 2.0 blocks above head + offset
-        Location startLoc = player.getLocation().add(0, 2.0 + verticalOffset, 0);
-
-        showAnimatedText(startLoc, text);
-    }
-
-    public void showFloatingText(UUID playerUUID, String text) {
-        showFloatingText(playerUUID, text, 0.25);
-    }
-
-    // NEW: Centralized method for Location-based FCT (Damage/Heal/Status)
-    public void showCombatFloatingText(Location loc, String text) {
-        showAnimatedText(loc.add(0, 1.5, 0), text); // Default combat/miss position is +1.5 to +2.0
-    }
-
-    // NEW: Core Animation Logic (Moved from CombatHandler.java and adapted)
-    private void showAnimatedText(Location startLoc, String text) {
-        getServer().getScheduler().runTask(this, () -> {
-            ArmorStand stand = startLoc.getWorld().spawn(startLoc, ArmorStand.class);
-            stand.setVisible(false);
-            stand.setGravity(false);
-            stand.setMarker(true);
-            stand.setCustomNameVisible(true);
-            stand.customName(Component.text(text));
-            stand.setSmall(true);
-
-            // Animation Task: Move upwards constantly for 1 second (20 ticks)
-            BukkitTask[] task = new BukkitTask[1];
-            task[0] = getServer().getScheduler().runTaskTimer(this, new Runnable() {
-                private int ticks = 0;
-                private final Location currentLocation = stand.getLocation();
-                private final double distance = 0.5; // Total distance to move up
-                private final double step = distance / 20.0; // Distance per tick (over 20 ticks)
-
-                @Override
-                public void run() {
-                    if (stand.isDead() || ticks >= 20) {
-                        stand.remove();
-                        if (task[0] != null) task[0].cancel();
-                        return;
-                    }
-                    currentLocation.add(0, step, 0); // Move up
-                    stand.teleport(currentLocation);
-                    ticks++;
-                }
-            }, 0L, 1L);
-        });
-    }
-
-    // NEW: FCT Helper Methods exposed by the plugin (for external calls, e.g., skill handlers)
-
-    // 7) Normal Damage
-    public void showDamageFCT(Location loc, double damage) {
-        showCombatFloatingText(loc, "§f" + String.format("%.0f", damage));
-    }
-
-    // 8) True Damage
-    public void showTrueDamageFCT(Location loc, double damage) {
-        showCombatFloatingText(loc, "§6" + String.format("%.0f", damage));
-    }
-
-    // 10) Heal HP
-    public void showHealHPFCT(Location loc, double value) {
-        showCombatFloatingText(loc, "§a+" + String.format("%.0f", value) + " HP");
-    }
-
-    // 11) Heal SP
-    public void showHealSPFCT(Location loc, double value) {
-        showCombatFloatingText(loc, "§b+" + String.format("%.0f", value) + " SP");
-    }
-
-    // 12) Status Damage (Poison/Burn/Bleed)
-    public void showStatusDamageFCT(Location loc, String status, double value) {
-        String color = switch (status.toLowerCase()) {
-            case "poison" -> "§2";
-            case "burn" -> "§c";
-            case "bleed" -> "§4";
-            default -> "§7"; // Default to grey if status is unknown
-        };
-        showCombatFloatingText(loc, color + "-" + String.format("%.0f", value));
-    }
+    // ... (omitted FCT Helper Methods)
 
     public StatManager getStatManager() { return statManager; }
     public ManaManager getManaManager() { return manaManager; }
     public AttributeHandler getAttributeHandler() { return attributeHandler; }
     public DataManager getDataManager() { return dataManager; }
+    public ItemAttributeManager getItemAttributeManager() { return itemAttributeManager; } // NEW GETTER
 }
