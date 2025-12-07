@@ -58,7 +58,6 @@ public class GUIListener implements Listener {
         // 4. Handle Allocate (Slot 52)
         else if (slot == 52 && name.contains("Allocate")) {
             plugin.getStatManager().allocateStats(player); // Apply all pending changes
-            plugin.updateAllStats(player); // MODIFIED: Call centralized update (Applies item bonuses, updates vanilla attributes, updates bars)
             new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
         }
 
@@ -66,7 +65,6 @@ public class GUIListener implements Listener {
         else if (slot == 42 && name.contains("Reset Select")) {
             plugin.getStatManager().getData(player.getUniqueId()).clearAllPendingStats();
             player.sendMessage("§e[System] Pending Stat Changes have been cleared.");
-            plugin.updateAllStats(player); // MODIFIED: Call centralized update
             new CharacterGUI(plugin).open(player, Tab.BASIC_INFO);
         }
 
@@ -112,7 +110,8 @@ public class GUIListener implements Listener {
 
         if (success) {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
-            plugin.updateAllStats(player); // MODIFIED: Call centralized update
+            plugin.getAttributeHandler().updatePlayerStats(player);
+            plugin.getManaManager().updateBar(player);
             new CharacterGUI(plugin).open(player, Tab.BASIC_INFO); // Refresh GUI
         } else {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1f, 0.5f);
@@ -134,7 +133,8 @@ public class GUIListener implements Listener {
 
         if (success) {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.5f);
-            plugin.updateAllStats(player); // MODIFIED: Call centralized update
+            plugin.getAttributeHandler().updatePlayerStats(player);
+            plugin.getManaManager().updateBar(player);
             new CharacterGUI(plugin).open(player, Tab.BASIC_INFO); // Refresh GUI
         } else {
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HARP, 1f, 0.5f);
@@ -165,6 +165,7 @@ public class GUIListener implements Listener {
             return;
         }
 
-        plugin.updateAllStats(player); // MODIFIED: Call centralized update
+        plugin.getAttributeHandler().updatePlayerStats(player);
+        plugin.getManaManager().updateBar(player);
     }
 }
