@@ -9,7 +9,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.rostats.ROStatsPlugin;
 import org.rostats.data.PlayerData;
 import org.rostats.data.StatManager;
-import org.rostats.itemeditor.ItemAttributeManager; // NEW IMPORT
 
 public class AttributeHandler implements Listener {
 
@@ -28,37 +27,32 @@ public class AttributeHandler implements Listener {
         StatManager stats = plugin.getStatManager();
         PlayerData data = stats.getData(player.getUniqueId());
 
-        // *** 1. NEW: Get and apply item bonuses (MUST HAPPEN FIRST) ***
-        ItemAttributeManager itemManager = plugin.getItemAttributeManager();
-        if (itemManager != null) {
-            itemManager.updateAllEquippedAttributes(player); // This method is new and must be implemented in the editor plugin
-        }
-        // ************************************************************
-
         int vit = data.getStat("VIT");
         int agi = data.getStat("AGI");
         int dex = data.getStat("DEX");
         int baseLevel = data.getBaseLevel();
 
-        // 2. VIT -> Max HP (Now uses getMaxHP which incorporates item bonuses)
-        // ... (omitted rest of the code as it is now correct, relying on updated PlayerData getters)
-
+        // 1. VIT -> Max HP
+        // ใช้สูตร MaxHP ที่ถูกแก้ไขใน PlayerData.java
         double finalMaxHealth = data.getMaxHP();
 
         if (finalMaxHealth > 2048.0) finalMaxHealth = 2048.0;
         setAttribute(player, Attribute.GENERIC_MAX_HEALTH, finalMaxHealth);
 
-        // 3. AGI -> Movement Speed (Now uses BaseMSPD + MSpdPercent, both incorporate item bonuses)
+        // 2. AGI -> Movement Speed
+        // ใช้ BaseMSPD + MSpdPercent
         double speedBonus = data.getBaseMSPD() + (data.getMSpdPercent() / 100.0);
         double finalSpeed = speedBonus;
         if (finalSpeed > 1.0) finalSpeed = 1.0;
         setAttribute(player, Attribute.GENERIC_MOVEMENT_SPEED, finalSpeed);
 
-        // 4. ASPD (Now uses getAspdBonus which incorporates item bonuses)
+        // 3. ASPD
+        // ใช้ค่า ASPD Multiplier ที่ถูกแก้ไขใน StatManager.java
         double aspdMultiplier = stats.getAspdBonus(player);
         setAttribute(player, Attribute.GENERIC_ATTACK_SPEED, 4.0 * aspdMultiplier);
 
-        // 5. Soft DEF (Values don't change from item, only derived/combat stats do)
+        // 4. Soft DEF
+        // ใช้สูตร SoftPDEF ที่ถูกแก้ไขใน StatManager.java (VIT * 0.5 + AGI * 0.2)
         double softDef = stats.getSoftDef(player);
         setAttribute(player, Attribute.GENERIC_ARMOR, softDef);
 
